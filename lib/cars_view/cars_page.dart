@@ -1,20 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
-class CarData {
-  CarData({required this.carID, required this.color, required this.name, required this.owner, required this.sharedEmails, required this.textLocation});
-
-  final String carID;
-
-  final Color color;
-  final String name;
-  final String owner;
-
-  final List<String> sharedEmails;
-
-  final String? textLocation;
-}
+import 'cars_data.dart';
+import 'map_widget.dart';
 
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
@@ -35,13 +25,23 @@ class CarsPage extends StatefulWidget {
 }
 
 class _CarsPageState extends State<CarsPage> {
+  final GlobalKey<MapWidgetState> mapKey = GlobalKey();
+  Future<List<CarData>>? fetchCarsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+
+    fetchCarsFuture = fetchVisibleCars();
+  }
+
   static Color colorFromInt(int colorInt) {
-    // I store in DB as 8-bit RGBA channels.
+    // I store in DB as 8-bit BGRA channels.
     return Color.fromARGB(
       (colorInt >> 32) & 0xFF,
-      (colorInt) & 0xFF,
-      (colorInt >> 8) & 0xFF,
       (colorInt >> 16) & 0xFF,
+      (colorInt >> 8) & 0xFF,
+      (colorInt) & 0xFF,
     );
   }
 
@@ -64,6 +64,7 @@ class _CarsPageState extends State<CarsPage> {
             owner: docSnapshot["owner"],
             sharedEmails: List<String>.from(docSnapshot["shared_emails"]),
             textLocation: docSnapshot.data().containsKey("text_location") ? docSnapshot["text_location"] : null,
+            geoLocation: docSnapshot.data().containsKey("geo_location") ? docSnapshot["geo_location"] : null,
           ));
         }
 
@@ -74,8 +75,61 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  static void tryParkCar(String carID) {
+  void tryPark(String carID, String textLocation, LatLng? position) {
+    print(FirebaseAuth.instance.currentUser!.uid);
+    var db = FirebaseFirestore.instance;
+    var modifiedCar = db.collection("cars").doc(carID);
 
+    modifiedCar.update({
+      "geo_location": position != null ? GeoPoint(position.latitude, position.longitude) : null,
+      "text_location": textLocation,
+    }).then((a) {
+      // Update the map markers.
+      _refreshCars();
+
+      print("Parked car!!!!!11!!11!!1!!!");
+    });
+  }
+
+  void openCarParkDialog(String carID) {
+    GlobalKey<MapWidgetState> parkMapKey  = GlobalKey();
+    TextEditingController     parkTextController = TextEditingController();
+
+    showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => Dialog(
+        child: Padding(
+          padding: EdgeInsetsGeometry.all(10),
+          child: Column(
+            spacing: 5,
+            children: [
+              Text("Park Your Car"),
+              TextField(
+                controller: parkTextController,
+                decoration: InputDecoration(
+                  border: UnderlineInputBorder(),
+                  labelText: "Text Position",
+                ),
+              ),
+              Expanded(child: MapWidget(key: parkMapKey, clickMarker: true)),
+              Center(
+                child: Row(
+                  children: [
+                    TextButton(onPressed: (){ Navigator.pop(context); }, child: const Text("Cancel")),
+                    TextButton(onPressed: () {
+                      LatLng? mapPosition = parkMapKey.currentState!.getTouchMarkerPosition();
+                      tryPark(carID, parkTextController.text, mapPosition);
+
+                      Navigator.pop(context);
+                    }, child: const Text("Park"))
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      )
+    );
   }
 
   static void tryTakeCar(String carID) {
@@ -104,7 +158,7 @@ class _CarsPageState extends State<CarsPage> {
                       spacing: 10,
                       children: [
                         ElevatedButton(
-                          onPressed: (){ return tryParkCar(car.carID); },
+                          onPressed: (){ return openCarParkDialog(car.carID); },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue.shade300, // The button's background color
                             foregroundColor: Colors.white, // The text/icon color
@@ -133,16 +187,29 @@ class _CarsPageState extends State<CarsPage> {
     return Column(children: cards);
   }
 
+// Calling this function will trigger BOTH FutureBuilders simultaneously
+  void _refreshCars() {
+    setState(() {
+      fetchCarsFuture = fetchVisibleCars();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var visibleCarsWidget = FutureBuilder<List<CarData>>(
-      future: fetchVisibleCars(),
+      future: fetchCarsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return CircularProgressIndicator(); // Show loading while waiting
         }
         if (snapshot.hasError) return Text("Error: ${snapshot.error}");
 
+        // Update the map markers.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          mapKey.currentState?.setCarMarkers(snapshot.data!);
+        });
+
+        // Actually build the car list.
         return buildVisibleCarsList(snapshot.data!);
       },
     );
@@ -162,14 +229,16 @@ class _CarsPageState extends State<CarsPage> {
         // Here we take the value from the CarsPage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: [
+          IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))
+        ],
       ),
       body: Row(
-        // mainAxisAlignment: .left,
-        spacing: 10,
+        spacing: 2,
 
         children: [
           visibleCarsWidget,
-          SizedBox(width: 400, child: Text(FirebaseAuth.instance.currentUser!.email!)),
+          Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
         ],
       ),
     );

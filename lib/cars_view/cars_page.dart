@@ -68,8 +68,9 @@ class _CarsPageState extends State<CarsPage> {
             name: docSnapshot["name"],
             owner: docSnapshot["owner"],
             sharedEmails: List<String>.from(docSnapshot["shared_emails"]),
-            textLocation: docSnapshot.data().containsKey("text_location") ? docSnapshot["text_location"] : null,
-            geoLocation: docSnapshot.data().containsKey("geo_location") ? docSnapshot["geo_location"] : null,
+            textLocation: docSnapshot.data()["text_location"],
+            geoLocation: docSnapshot.data()["geo_location"],
+            occuppierEmail: docSnapshot.data()["occupier_email"]
           ));
         }
 
@@ -88,6 +89,7 @@ class _CarsPageState extends State<CarsPage> {
     modifiedCar.update({
       "geo_location": position != null ? GeoPoint(position.latitude, position.longitude) : null,
       "text_location": textLocation,
+      "occupier_email": null,
     }).then((a) {
       // Update the map markers.
       _refreshCars();
@@ -136,6 +138,7 @@ class _CarsPageState extends State<CarsPage> {
                         "name": carNameTextController.text,
                         "color": carColor.toARGB32(),
                         "shared_emails": sharedEmailsKey.currentState!.getItems(),
+                        "occupier_email": null
                       }).then((docReference){ _refreshCars(); });
                       Navigator.pop(context);
                     }, child: Text("Add Car")),
@@ -194,8 +197,17 @@ class _CarsPageState extends State<CarsPage> {
     FirebaseFirestore.instance.collection("cars").doc(carID).delete().then((_){ _refreshCars(); });
   }
 
-  static void tryTakeCar(String carID) {
+  void tryTakeCar(CarData car) {
+    String? newOccupier = FirebaseAuth.instance.currentUser?.email;
+    if (car.isOccupiedByMe()) newOccupier = null;
 
+    print("Trying to take a car");
+    FirebaseFirestore.instance.collection("cars").doc(car.carID).update({"occupier_email": newOccupier}).then(
+      (_){
+        print("Updating taker state");
+        _refreshCars();
+      }
+    );
   }
 
   Widget buildVisibleCarsList(List<CarData> carsData) {
@@ -218,10 +230,11 @@ class _CarsPageState extends State<CarsPage> {
 
           CarData currentCar = carsData[index];
           return Card(
+            color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
             child: ListTile(
               leading: Icon(Icons.directions_car, color: currentCar.color),
               title: Text(currentCar.name),
-              subtitle: Text(currentCar.textLocation ?? ""),
+              subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : currentCar.occuppierEmail!) : (currentCar.textLocation ?? "")),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
                 children: [
@@ -229,6 +242,11 @@ class _CarsPageState extends State<CarsPage> {
                     onPressed: (){ openCarParkDialog(currentCar.carID); },
                     icon: Icon(Icons.local_parking),
                     color: Colors.blue
+                  ),
+                  IconButton(
+                    onPressed: () { tryTakeCar(currentCar); },
+                    icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
+                    // color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue : Colors.red) : Colors.white
                   ),
                   PopupMenuButton<String>(
                     icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
@@ -256,6 +274,7 @@ class _CarsPageState extends State<CarsPage> {
 // Calling this function will trigger BOTH FutureBuilders simultaneously
   void _refreshCars() {
     setState(() {
+      print("Updating cars from DB");
       fetchCarsFuture = fetchVisibleCars();
     });
   }

@@ -114,7 +114,7 @@ class MapWidgetState extends State<MapWidget> {
     setState(() {
       print("Updating actually displayed markers on the map!!!");
       markers = carData
-      .where((car) => car.geoLocation != null)
+      .where((car) => car.geoLocation != null && !car.isOccupied())
       .map((car) => Marker(
         rotate: true,
         child: Tooltip(

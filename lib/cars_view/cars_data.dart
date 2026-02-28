@@ -1,9 +1,10 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class CarData {
-  CarData({required this.carID, required this.color, required this.name, required this.owner, required this.sharedEmails, required this.textLocation, required this.geoLocation});
+  CarData({required this.carID, required this.color, required this.name, required this.owner, required this.sharedEmails, required this.textLocation, required this.geoLocation, required this.occuppierEmail});
 
   final String carID;
 
@@ -15,4 +16,15 @@ class CarData {
 
   final String? textLocation;
   final GeoPoint? geoLocation;
+
+  final String? occuppierEmail;
+
+  bool isOccupied() {
+    return occuppierEmail != null;
+  }
+
+  bool isOccupiedByMe() {
+    print("Is car occupied by me? ${occuppierEmail} == ${FirebaseAuth.instance.currentUser?.email}");
+    return isOccupied() && (occuppierEmail == FirebaseAuth.instance.currentUser?.email);
+  }
 }

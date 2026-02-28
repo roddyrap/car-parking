@@ -1,10 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'cars_data.dart';
 import 'map_widget.dart';
+import 'editable_string_list.dart';
+
+const Map<String, Color> CAR_COLORS = {
+  "white": Colors.white,
+  "black": Colors.black,
+  "gray": Colors.grey,
+  "blue": Colors.blue,
+  "orange": Colors.orange,
+  "purple": Colors.purple,
+  "green": Colors.green,
+  "yellow": Colors.yellow,
+  "pink": Colors.pink,
+  "red": Colors.red
+};
 
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
@@ -35,16 +50,6 @@ class _CarsPageState extends State<CarsPage> {
     fetchCarsFuture = fetchVisibleCars();
   }
 
-  static Color colorFromInt(int colorInt) {
-    // I store in DB as 8-bit BGRA channels.
-    return Color.fromARGB(
-      (colorInt >> 32) & 0xFF,
-      (colorInt >> 16) & 0xFF,
-      (colorInt >> 8) & 0xFF,
-      (colorInt) & 0xFF,
-    );
-  }
-
   static Future<List<CarData>> fetchVisibleCars() {
     final db = FirebaseFirestore.instance;
 
@@ -59,7 +64,7 @@ class _CarsPageState extends State<CarsPage> {
         for (var docSnapshot in querySnapshot.docs) {
           cars.add(CarData(
             carID: docSnapshot.id,
-            color: colorFromInt(docSnapshot["color"]),
+            color: Color.new(docSnapshot["color"]),
             name: docSnapshot["name"],
             owner: docSnapshot["owner"],
             sharedEmails: List<String>.from(docSnapshot["shared_emails"]),
@@ -91,6 +96,59 @@ class _CarsPageState extends State<CarsPage> {
     });
   }
 
+  void openAddCarDialog() {
+    GlobalKey<EditableStringListState> sharedEmailsKey = GlobalKey();
+    var carNameTextController = TextEditingController();
+    String? carColorName = CAR_COLORS.keys.first;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => Dialog(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsetsGeometry.all(5),
+            child: Column(
+              children: [
+                Row(children: [Icon(Icons.add), Text("Add a New Car")]),
+                TextField(controller: carNameTextController, decoration: InputDecoration(label: Text("Car Name"))),
+                Row(
+                  children: [
+                    Text("Color:"),
+                    DropdownMenu<String>(
+                      requestFocusOnTap: false,
+                      onSelected: (value){ carColorName = value!; },
+                      initialSelection: CAR_COLORS.keys.first,
+                      dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
+                    ),
+                  ],
+                ),
+                Text(textAlign: TextAlign.start, "Shared Emails:"),
+                EditableStringList(key: sharedEmailsKey),
+                Row(
+                  children: [
+                    TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
+                    TextButton(onPressed: () {
+                      // TODO: Add car limit... (Should do it in firebase though).
+                      Color carColor = CAR_COLORS[carColorName] ?? CAR_COLORS["white"]!;
+                      var db = FirebaseFirestore.instance;
+                      db.collection("cars").add({
+                        "owner": FirebaseAuth.instance.currentUser!.uid,
+                        "name": carNameTextController.text,
+                        "color": carColor.toARGB32(),
+                        "shared_emails": sharedEmailsKey.currentState!.getItems(),
+                      }).then((docReference){ _refreshCars(); });
+                      Navigator.pop(context);
+                    }, child: Text("Add Car")),
+                  ],
+                )
+              ],
+            )
+          ),
+        )
+      )
+    );
+  }
+
   void openCarParkDialog(String carID) {
     GlobalKey<MapWidgetState> parkMapKey  = GlobalKey();
     TextEditingController     parkTextController = TextEditingController();
@@ -103,7 +161,7 @@ class _CarsPageState extends State<CarsPage> {
           child: Column(
             spacing: 5,
             children: [
-              Text("Park Your Car"),
+              Row(children: [Icon(Icons.local_parking), Text("Park Your Car")]),
               TextField(
                 controller: parkTextController,
                 decoration: InputDecoration(
@@ -137,7 +195,7 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   Widget buildVisibleCarsList(List<CarData> carsData) {
-    List<Card> cards = List.empty(growable: true);
+    List<Widget> cards = List.empty(growable: true);
     for (var car in carsData)
     {
       cards.add(
@@ -184,6 +242,12 @@ class _CarsPageState extends State<CarsPage> {
       );
     }
 
+    // Add an add new car button.
+    // TODO: Only do so when a car limit isn't reached.
+    cards.add(SizedBox(height: 10));
+    cards.add(ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car")));
+
+    // TODO: Add scroll functionality.
     return Column(children: cards);
   }
 

@@ -17,14 +17,14 @@ class MapWidget extends StatefulWidget {
 
 class MapWidgetState extends State<MapWidget> {
   MapWidgetState() :
-      this.startPosition = LatLng(0, 0), // TODO: Get user's location.
       this.markers = [],
       this.touchMarker = null;
 
   final MapController mapController = MapController();
 
-  LatLng startPosition;
+  // LatLng clientPosition = 
   List<Marker> markers;
+  Marker? clientPositionMarker;
   Marker? touchMarker;
 
   @override
@@ -32,7 +32,7 @@ class MapWidgetState extends State<MapWidget> {
     super.initState();
 
     // TODO: Doesn't work.
-    // moveMapToCurrentPosition();
+    focusOnCurrentPosition();
   }
 
   LatLng getMapPosition() {
@@ -43,6 +43,7 @@ class MapWidgetState extends State<MapWidget> {
     // Check if location services are enabled
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      print("Failed to get location: Service disabled");
       return null;
     }
 
@@ -51,19 +52,21 @@ class MapWidgetState extends State<MapWidget> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+      print("Failed to get location: No permission");
         return null;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
+      print("Failed to get location: No permission, forever");
       return null;
     }
 
     // Get the current position
     try {
       return Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    // ignore: empty_catches
     } catch (e) {
+      print("Failed to get location: Failed to get current position");
       return null;
     }
   }
@@ -89,13 +92,22 @@ class MapWidgetState extends State<MapWidget> {
     return touchMarker!.point;
   }
 
-  Future<void> moveMapToCurrentPosition() async {
+  Future<void> focusOnCurrentPosition() async {
     var currentPosition = await getClientPosition();
     if (currentPosition == null) return;
 
+    var currentLatLng = LatLng(currentPosition.latitude, currentPosition.longitude);
     setState(() {
-      // mapController.animateCamera(CameraUpdate.newLatLng(LatLng(currentPosition.latitude, currentPosition.longitude)));
+      print("Setting current position marker!!!");
+      // Update the current location marker.
+      clientPositionMarker = Marker(
+        point: currentLatLng,
+        child: Icon(Icons.my_location, color: Colors.blue)
+      );
     });
+
+    // Update the current map position.
+    mapController.move(currentLatLng, mapController.camera.zoom);
   }
 
   void setCarMarkers(List<CarData> carData) {
@@ -124,13 +136,17 @@ class MapWidgetState extends State<MapWidget> {
       mapController: mapController,
       options: MapOptions(
         initialCenter: LatLng(32.0853, 34.7818), // Center the map over Tel Aviv, Israel.
-        initialZoom: 9.2,
+        initialZoom: 18.0,
         onTap: widget.clickMarker ? handleTap : null,
       ),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'dev.roddyra.carparking',
+        ),
+        FloatingActionButton(
+          onPressed: focusOnCurrentPosition,
+          child: Icon(Icons.my_location),
         ),
         RichAttributionWidget(
           attributions: [
@@ -141,7 +157,7 @@ class MapWidgetState extends State<MapWidget> {
           ],
         ),
         MarkerLayer(
-          markers: markers + (touchMarker != null ? [touchMarker!] : []),
+          markers: markers + [?touchMarker, ?clientPositionMarker],
         ),
       ],
     );

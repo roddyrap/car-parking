@@ -199,47 +199,57 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   Widget buildVisibleCarsList(List<CarData> carsData) {
-    return ListView.builder(
-      itemCount: carsData.length + 1,
-      itemBuilder: (context, index) {
-        // The add button at the end.
-        if (index == carsData.length) {
-          return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
-        }
+    return RefreshIndicator(
+      onRefresh: () { _refreshCars(); return fetchCarsFuture!.then((_) =>{}); },
+      child: ListView.builder(
+        itemCount: carsData.length + 2,
+        itemBuilder: (context, index) {
+          // Refresh button at the beginning.
+          if (index == 0) {
+            return ElevatedButton.icon(onPressed: (){ _refreshCars(); }, icon: Icon(Icons.refresh), label: Text("Refresh Cars"));
+          }
 
-        CarData currentCar = carsData[index];
-        return Card(
-          child: ListTile(
-            leading: Icon(Icons.directions_car, color: currentCar.color),
-            title: Text(currentCar.name),
-            subtitle: Text(currentCar.textLocation ?? ""),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
-              children: [
-                IconButton(
-                  onPressed: (){ openCarParkDialog(currentCar.carID); },
-                  icon: Icon(Icons.local_parking),
-                  color: Colors.blue
-                ),
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
-                  onSelected: (String result) {
-                    if (result == "delete") {
-                      tryDeleteCar(currentCar.carID);
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
-                  ],
-                ),
-              ]
+          index -= 1;
+
+          // The add button at the end.
+          if (index == carsData.length) {
+            return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
+          }
+
+          CarData currentCar = carsData[index];
+          return Card(
+            child: ListTile(
+              leading: Icon(Icons.directions_car, color: currentCar.color),
+              title: Text(currentCar.name),
+              subtitle: Text(currentCar.textLocation ?? ""),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
+                children: [
+                  IconButton(
+                    onPressed: (){ openCarParkDialog(currentCar.carID); },
+                    icon: Icon(Icons.local_parking),
+                    color: Colors.blue
+                  ),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
+                    onSelected: (String result) {
+                      if (result == "delete") {
+                        tryDeleteCar(currentCar.carID);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                ]
+              ),
             ),
-          ),
-        );
-      }
+          );
+        }
+      )
     );
   }
 

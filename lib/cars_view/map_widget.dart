@@ -92,6 +92,10 @@ class MapWidgetState extends State<MapWidget> {
     return touchMarker!.point;
   }
 
+  void focusOnLatLng(LatLng position) {
+    mapController.move(position, mapController.camera.zoom);
+  } 
+
   Future<void> focusOnCurrentPosition() async {
     var currentPosition = await getClientPosition();
     if (currentPosition == null) return;

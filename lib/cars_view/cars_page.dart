@@ -47,7 +47,7 @@ class _CarsPageState extends State<CarsPage> {
   void initState() {
     super.initState();
 
-    fetchCarsFuture = fetchVisibleCars();
+    _refreshCars();
   }
 
   static Future<List<CarData>> fetchVisibleCars() {
@@ -236,11 +236,23 @@ class _CarsPageState extends State<CarsPage> {
                 if (result == "delete") {
                   tryDeleteCar(currentCar.carID);
                 }
+                else if (result == "focus" && currentCar.geoLocation != null) {
+                  mapKey.currentState?.focusOnLatLng(
+                    LatLng(
+                      currentCar.geoLocation!.latitude,
+                      currentCar.geoLocation!.longitude
+                    )
+                  );
+                }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                 const PopupMenuItem<String>(
                   value: 'delete',
                   child: Text('Delete'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'focus',
+                  child: Text('Focus'),
                 ),
               ],
             ),
@@ -309,6 +321,11 @@ class _CarsPageState extends State<CarsPage> {
     setState(() {
       print("Updating cars from DB");
       fetchCarsFuture = fetchVisibleCars();
+      fetchCarsFuture!.then(
+        (cars) {
+          setState(() => mapKey.currentState?.setCarMarkers(cars));
+        }
+      );
     });
   }
 

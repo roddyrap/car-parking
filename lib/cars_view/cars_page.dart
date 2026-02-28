@@ -210,64 +210,97 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  Widget buildVisibleCarsList(List<CarData> carsData) {
-    return RefreshIndicator(
-      onRefresh: () { _refreshCars(); return fetchCarsFuture!.then((_) =>{}); },
-      child: ListView.builder(
-        itemCount: carsData.length + 2,
-        itemBuilder: (context, index) {
-          // Refresh button at the beginning.
-          if (index == 0) {
-            return ElevatedButton.icon(onPressed: (){ _refreshCars(); }, icon: Icon(Icons.refresh), label: Text("Refresh Cars"));
-          }
-
-          index -= 1;
-
-          // The add button at the end.
-          if (index == carsData.length) {
-            return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
-          }
-
-          CarData currentCar = carsData[index];
-          return Card(
-            color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
-            child: ListTile(
-              leading: Icon(Icons.directions_car, color: currentCar.color),
-              title: Text(currentCar.name),
-              subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : currentCar.occuppierEmail!) : (currentCar.textLocation ?? "")),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
-                children: [
-                  IconButton(
-                    onPressed: (){ openCarParkDialog(currentCar.carID); },
-                    icon: Icon(Icons.local_parking),
-                    color: Colors.blue
-                  ),
-                  IconButton(
-                    onPressed: () { tryTakeCar(currentCar); },
-                    icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
-                    // color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue : Colors.red) : Colors.white
-                  ),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
-                    onSelected: (String result) {
-                      if (result == "delete") {
-                        tryDeleteCar(currentCar.carID);
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Text('Delete'),
-                      ),
-                    ],
-                  ),
-                ]
-              ),
+  Widget buildCarCard(CarData currentCar) {
+    return Card(
+      color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
+      child: ListTile(
+        leading: Icon(Icons.directions_car, color: currentCar.color),
+        title: Text(currentCar.name),
+        subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : currentCar.occuppierEmail!) : (currentCar.textLocation ?? "")),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
+          children: [
+            IconButton(
+              onPressed: (){ openCarParkDialog(currentCar.carID); },
+              icon: Icon(Icons.local_parking),
+              color: Colors.blue
             ),
+            IconButton(
+              onPressed: () { tryTakeCar(currentCar); },
+              icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
+              // color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue : Colors.red) : Colors.white
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
+              onSelected: (String result) {
+                if (result == "delete") {
+                  tryDeleteCar(currentCar.carID);
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Text('Delete'),
+                ),
+              ],
+            ),
+          ]
+        ),
+      ),
+    );
+  }
+
+  Widget buildVisibleCarsList(List<CarData> carsData, {ScrollController? scrollController, bool buildHandle = false}) {
+    int buildHandleInt = buildHandle ? 1 : 0;
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      controller: scrollController,
+      itemCount: carsData.length + 2 + buildHandleInt,
+      itemBuilder: (context, index) {
+        // Drag handle should be at the top if we build it.
+        if (buildHandle && index == 0) {
+          return Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            )
           );
         }
-      )
+
+        // Refresh button at the beginning.
+        if (index == buildHandleInt) {
+          return ElevatedButton.icon(onPressed: (){ _refreshCars(); }, icon: Icon(Icons.refresh), label: Text("Refresh Cars"));
+        }
+
+        index -= 1 + buildHandleInt;
+
+        // The add button at the end.
+        if (index == carsData.length) {
+          return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
+        }
+
+        return buildCarCard(carsData[index]);
+      }
+    );
+  }
+
+  Widget buildVisibleCarsListFuture(Future<List<CarData>>? carsData, {ScrollController? scrollController, bool buildHandle = false}) {
+    return FutureBuilder(
+      future: fetchCarsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // return CircularProgressIndicator(); // Show loading while waiting
+          return Container();
+        }
+        if (snapshot.hasError) return Text("Error: ${snapshot.error}");
+
+        return buildVisibleCarsList(snapshot.data!, scrollController: scrollController, buildHandle: buildHandle);
+      }
     );
   }
 
@@ -281,23 +314,8 @@ class _CarsPageState extends State<CarsPage> {
 
   @override
   Widget build(BuildContext context) {
-    var visibleCarsWidget = FutureBuilder<List<CarData>>(
-      future: fetchCarsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator(); // Show loading while waiting
-        }
-        if (snapshot.hasError) return Text("Error: ${snapshot.error}");
-
-        // Update the map markers.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          mapKey.currentState?.setCarMarkers(snapshot.data!);
-        });
-
-        // Actually build the car list.
-        return buildVisibleCarsList(snapshot.data!);
-      },
-    );
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isMobile = screenWidth < 600;
 
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
@@ -305,14 +323,45 @@ class _CarsPageState extends State<CarsPage> {
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
+    if (isMobile) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: Text(widget.title),
+          actions: [
+            IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))
+          ],
+        ),
+        body: Stack(
+          children: [
+            Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
+            DraggableScrollableSheet(
+              initialChildSize: 0.2,
+              minChildSize: 0.1,
+              builder: (context, scrollController){
+                return Container(
+                  decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      boxShadow: [
+                        BoxShadow(blurRadius: 10, color: Colors.black.withValues(alpha: 0.2)),
+                      ],
+                  ),
+                  child: buildVisibleCarsListFuture(
+                    fetchCarsFuture,
+                    scrollController: scrollController,
+                    buildHandle: true
+                  )
+                );
+              },
+            )
+          ],
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the CarsPage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
         actions: [
           IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))
@@ -322,7 +371,7 @@ class _CarsPageState extends State<CarsPage> {
         spacing: 2,
 
         children: [
-          ConstrainedBox(constraints: BoxConstraints(maxWidth: 300), child: visibleCarsWidget),
+          ConstrainedBox(constraints: BoxConstraints(maxWidth: 350), child: buildVisibleCarsListFuture(fetchCarsFuture)),
           Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
         ],
       ),

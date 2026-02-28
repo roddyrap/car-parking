@@ -190,65 +190,57 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
+  void tryDeleteCar(String carID) {
+    FirebaseFirestore.instance.collection("cars").doc(carID).delete().then((_){ _refreshCars(); });
+  }
+
   static void tryTakeCar(String carID) {
 
   }
 
   Widget buildVisibleCarsList(List<CarData> carsData) {
-    List<Widget> cards = List.empty(growable: true);
-    for (var car in carsData)
-    {
-      cards.add(
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
-          child: Padding(
-            padding: EdgeInsetsGeometry.all(10),
-            child: Row(
-              spacing: 5,
+    return ListView.builder(
+      itemCount: carsData.length + 1,
+      itemBuilder: (context, index) {
+        // The add button at the end.
+        if (index == carsData.length) {
+          return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
+        }
+
+        CarData currentCar = carsData[index];
+        return Card(
+          child: ListTile(
+            leading: Icon(Icons.directions_car, color: currentCar.color),
+            title: Text(currentCar.name),
+            subtitle: Text(currentCar.textLocation ?? ""),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
               children: [
-                Center(child: Icon(Icons.directions_car, color: car.color, size: 50.0)),
-                Column(
-                  children: [
-                    Text(car.name),
-                    Text(car.textLocation ?? ""),
-                    Text(""), // Spacer doesn't work for some reason. Causes an assertion failure in dart.
-                    Row(
-                      spacing: 10,
-                      children: [
-                        ElevatedButton(
-                          onPressed: (){ return openCarParkDialog(car.carID); },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade300, // The button's background color
-                            foregroundColor: Colors.white, // The text/icon color
-                          ),
-                          child: Text("Park"),
-                        ),
-                        ElevatedButton(
-                          onPressed: (){ return tryTakeCar(car.carID); },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade300, // The button's background color
-                            foregroundColor: Colors.white, // The text/icon color
-                          ),
-                          child: Text("Take")
-                        ),
-                      ],
+                IconButton(
+                  onPressed: (){ openCarParkDialog(currentCar.carID); },
+                  icon: Icon(Icons.local_parking),
+                  color: Colors.blue
+                ),
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
+                  onSelected: (String result) {
+                    if (result == "delete") {
+                      tryDeleteCar(currentCar.carID);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text('Delete'),
                     ),
-                  ]
-                )
-              ],
-            )
-          )
-        )
-      );
-    }
-
-    // Add an add new car button.
-    // TODO: Only do so when a car limit isn't reached.
-    cards.add(SizedBox(height: 10));
-    cards.add(ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car")));
-
-    // TODO: Add scroll functionality.
-    return Column(children: cards);
+                  ],
+                ),
+              ]
+            ),
+          ),
+        );
+      }
+    );
   }
 
 // Calling this function will trigger BOTH FutureBuilders simultaneously
@@ -301,7 +293,7 @@ class _CarsPageState extends State<CarsPage> {
         spacing: 2,
 
         children: [
-          visibleCarsWidget,
+          ConstrainedBox(constraints: BoxConstraints(maxWidth: 300), child: visibleCarsWidget),
           Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
         ],
       ),

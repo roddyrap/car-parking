@@ -302,7 +302,7 @@ class _CarsPageState extends State<CarsPage> {
                   value: 'delete',
                   child: Text('Delete'),
                 ),
-                const PopupMenuItem<String>(
+                if (!currentCar.isOccupied() && currentCar.geoLocation != null) const PopupMenuItem<String>(
                   value: 'focus',
                   child: Text('Focus'),
                 ),

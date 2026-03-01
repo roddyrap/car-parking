@@ -108,25 +108,31 @@ class _CarsPageState extends State<CarsPage> {
       builder: (BuildContext context) => Dialog(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsetsGeometry.all(5),
+            padding: EdgeInsetsGeometry.all(10),
             child: Column(
+              spacing: 10,
               children: [
-                Row(children: [Icon(Icons.add), Text("Add a New Car")]),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add),
+                      Text("Add a New Car", style: Theme.of(context).textTheme.titleLarge)
+                    ]
+                  )
+                ),
                 TextField(controller: carNameTextController, decoration: InputDecoration(label: Text("Car Name"))),
-                Row(
-                  children: [
-                    Text("Color:"),
-                    DropdownMenu<String>(
-                      requestFocusOnTap: false,
-                      onSelected: (value){ carColorName = value!; },
-                      initialSelection: CAR_COLORS.keys.first,
-                      dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
-                    ),
-                  ],
+                DropdownMenu<String>(
+                  label: Text("Color"),
+                  requestFocusOnTap: false,
+                  onSelected: (value){ carColorName = value!; },
+                  initialSelection: CAR_COLORS.keys.first,
+                  dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
                 ),
                 Text(textAlign: TextAlign.start, "Shared Emails:"),
                 EditableStringList(key: sharedEmailsKey),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
                     TextButton(onPressed: () {
@@ -164,7 +170,15 @@ class _CarsPageState extends State<CarsPage> {
           child: Column(
             spacing: 5,
             children: [
-              Row(children: [Icon(Icons.local_parking), Text("Park Your Car")]),
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_parking),
+                    Text("Park Your Car", style: Theme.of(context).textTheme.titleLarge)
+                  ]
+                )
+              ),
               TextField(
                 controller: parkTextController,
                 decoration: InputDecoration(
@@ -172,9 +186,15 @@ class _CarsPageState extends State<CarsPage> {
                   labelText: "Text Position",
                 ),
               ),
-              Expanded(child: MapWidget(key: parkMapKey, clickMarker: true)),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: MapWidget(key: parkMapKey, clickMarker: true)
+                )
+              ),
               Center(
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(onPressed: (){ Navigator.pop(context); }, child: const Text("Cancel")),
                     TextButton(onPressed: () {

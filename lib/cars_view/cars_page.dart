@@ -136,7 +136,7 @@ class _CarsPageState extends State<CarsPage> {
                     ]
                   )
                 ),
-                TextField(controller: carNameTextController, decoration: InputDecoration(label: Text("Car Name"))),
+                TextField(controller: carNameTextController, decoration: const InputDecoration(label: Text("Car Name"))),
                 DropdownMenu<String>(
                   label: Text("Color"),
                   requestFocusOnTap: false,
@@ -144,7 +144,7 @@ class _CarsPageState extends State<CarsPage> {
                   initialSelection: carColorName,
                   dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
                 ),
-                Text(textAlign: TextAlign.start, "Shared Emails:"),
+                const Text(textAlign: TextAlign.start, "Shared Emails:"),
                 EditableStringList(key: sharedEmailsKey, initialItems: currentCarData?.sharedEmails ?? []),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -191,7 +191,7 @@ class _CarsPageState extends State<CarsPage> {
       context: context,
       builder: (BuildContext context) => Dialog(
         child: Padding(
-          padding: EdgeInsetsGeometry.all(10),
+          padding: const EdgeInsetsGeometry.all(10),
           child: Column(
             spacing: 5,
             children: [
@@ -199,14 +199,14 @@ class _CarsPageState extends State<CarsPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.local_parking),
+                    const Icon(Icons.local_parking),
                     Text("Park Your Car", style: Theme.of(context).textTheme.titleLarge)
                   ]
                 )
               ),
               TextField(
                 controller: parkTextController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   border: UnderlineInputBorder(),
                   labelText: "Text Position",
                 ),
@@ -261,7 +261,7 @@ class _CarsPageState extends State<CarsPage> {
       child: ListTile(
         leading: currentCar.buildCarIcon(),
         title: Text(currentCar.name),
-        subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : currentCar.occuppierEmail!) : (currentCar.textLocation ?? "")),
+        subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : "Occupied by ${currentCar.occuppierEmail!}") : (currentCar.textLocation ?? "")),
         trailing: Row(
           mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
           children: [
@@ -276,7 +276,7 @@ class _CarsPageState extends State<CarsPage> {
               // color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue : Colors.red) : Colors.white
             ),
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert),// 2. What happens when a user picks an option
+              icon: const Icon(Icons.more_vert),// 2. What happens when a user picks an option
               onSelected: (String result) {
                 if (result == "delete") {
                   tryDeleteCar(currentCar.carID);
@@ -329,9 +329,10 @@ class _CarsPageState extends State<CarsPage> {
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(10),
+                decoration: const BoxDecoration(
+                  color: Colors.grey,
+                  // I can't use BorderRadius.circular because it's not const.
+                  borderRadius: BorderRadius.all(Radius.circular(10))
                 ),
               )
             );
@@ -349,13 +350,13 @@ class _CarsPageState extends State<CarsPage> {
               children: [
                 TextButton.icon(
                   onPressed: _refreshCars,
-                  label: Text("Refresh"),
-                  icon: Icon(Icons.refresh),
+                  label: const Text("Refresh"),
+                  icon: const Icon(Icons.refresh),
                 ),
                 TextButton.icon(
                   onPressed: openUpdateCarDialog,
-                  label: Text("Add Car"),
-                  icon: Icon(Icons.add),
+                  label: const Text("Add Car"),
+                  icon: const Icon(Icons.add),
                 ),
               ],
             )
@@ -371,12 +372,7 @@ class _CarsPageState extends State<CarsPage> {
     return FutureBuilder(
       future: fetchCarsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // return CircularProgressIndicator(); // Show loading while waiting
-          return Container();
-        }
         if (snapshot.hasError) return Text("Error: ${snapshot.error}");
-
         return buildVisibleCarsList(snapshot.data!, scrollController: scrollController, buildHandle: buildHandle);
       }
     );
@@ -384,15 +380,12 @@ class _CarsPageState extends State<CarsPage> {
 
 // Calling this function will trigger BOTH FutureBuilders simultaneously
   void _refreshCars() {
-    setState(() {
-      print("Updating cars from DB");
-      fetchCarsFuture = fetchVisibleCars();
-      fetchCarsFuture!.then(
-        (cars) {
-          setState(() => mapKey.currentState?.setCarMarkers(cars));
-        }
-      );
-    });
+    fetchCarsFuture = fetchVisibleCars();
+    fetchCarsFuture!.then(
+      (cars) {
+        setState(() => mapKey.currentState?.setCarMarkers(cars));
+      }
+    );
   }
 
   @override

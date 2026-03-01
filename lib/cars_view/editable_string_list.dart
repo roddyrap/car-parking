@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 class EditableStringList extends StatefulWidget {
-  const EditableStringList({super.key});
+  const EditableStringList({super.key, this.initialItems});
 
   @override
   State<EditableStringList> createState() => EditableStringListState();
+
+  final List<String>? initialItems;
 }
 
 class EditableStringListState extends State<EditableStringList> {
@@ -14,9 +16,9 @@ class EditableStringListState extends State<EditableStringList> {
     return _controllers.map((controller) => controller.text).toList();
   }
 
-  void _addEntry() {
+  void _addEntry({String? text}) {
     setState(() {
-      _controllers.add(TextEditingController());
+      _controllers.add(TextEditingController(text: text));
     });
   }
 
@@ -25,6 +27,16 @@ class EditableStringListState extends State<EditableStringList> {
       _controllers[index].dispose();
       _controllers.removeAt(index);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.initialItems == null) return;
+    for (var item in widget.initialItems!) {
+      _addEntry(text: item);
+    }
   }
 
   @override

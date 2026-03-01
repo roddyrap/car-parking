@@ -21,6 +21,15 @@ const Map<String, Color> CAR_COLORS = {
   "red": Colors.red
 };
 
+String? getColorName(Color color) {
+  for (var colorName in CAR_COLORS.keys) {
+    // Convert to ARGB32 in order to avoid floating-point imprecision.
+    if (color.toARGB32() == CAR_COLORS[colorName]?.toARGB32()) return colorName;
+  }
+
+  return null;
+}
+
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
 
@@ -98,10 +107,13 @@ class _CarsPageState extends State<CarsPage> {
     });
   }
 
-  void openAddCarDialog() {
+  // If we called with no `currentCarData` then adds a new car.
+  void openUpdateCarDialog({CarData? currentCarData}) {
     GlobalKey<EditableStringListState> sharedEmailsKey = GlobalKey();
+
     var carNameTextController = TextEditingController();
-    String? carColorName = CAR_COLORS.keys.first;
+    carNameTextController.text = currentCarData != null ? currentCarData.name : "";
+    String carColorName = (currentCarData != null ? getColorName(currentCarData.color) : null) ?? CAR_COLORS.keys.first;
 
     showDialog(
       context: context,
@@ -117,7 +129,10 @@ class _CarsPageState extends State<CarsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.add),
-                      Text("Add a New Car", style: Theme.of(context).textTheme.titleLarge)
+                      Text(
+                        currentCarData != null ? "Edit a Car" : "Add a New Car",
+                        style: Theme.of(context).textTheme.titleLarge
+                      )
                     ]
                   )
                 ),
@@ -126,11 +141,11 @@ class _CarsPageState extends State<CarsPage> {
                   label: Text("Color"),
                   requestFocusOnTap: false,
                   onSelected: (value){ carColorName = value!; },
-                  initialSelection: CAR_COLORS.keys.first,
+                  initialSelection: carColorName,
                   dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
                 ),
                 Text(textAlign: TextAlign.start, "Shared Emails:"),
-                EditableStringList(key: sharedEmailsKey),
+                EditableStringList(key: sharedEmailsKey, initialItems: currentCarData?.sharedEmails ?? []),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -139,15 +154,25 @@ class _CarsPageState extends State<CarsPage> {
                       // TODO: Add car limit... (Should do it in firebase though).
                       Color carColor = CAR_COLORS[carColorName] ?? CAR_COLORS["white"]!;
                       var db = FirebaseFirestore.instance;
-                      db.collection("cars").add({
+                      var dbCarData = {
                         "owner": FirebaseAuth.instance.currentUser!.uid,
                         "name": carNameTextController.text,
                         "color": carColor.toARGB32(),
-                        "shared_emails": sharedEmailsKey.currentState!.getItems(),
+                        "shared_emails": sharedEmailsKey.currentState?.getItems() ?? [],
                         "occupier_email": null
-                      }).then((docReference){ _refreshCars(); });
+                      };
+
+                      Future<void> dbUpdateFuture;
+                      if (currentCarData != null) {
+                        dbUpdateFuture = db.collection("cars").doc(currentCarData.carID).update(dbCarData);
+                      }
+                      else {
+                        dbUpdateFuture = db.collection("cars").add(dbCarData);
+                      }
+
+                      dbUpdateFuture.then((docReference){ _refreshCars(); });
                       Navigator.pop(context);
-                    }, child: Text("Add Car")),
+                    }, child: Text(currentCarData != null ? "Edit Car" : "Add Car")),
                   ],
                 )
               ],
@@ -256,6 +281,9 @@ class _CarsPageState extends State<CarsPage> {
                 if (result == "delete") {
                   tryDeleteCar(currentCar.carID);
                 }
+                if (result == "edit") {
+                  openUpdateCarDialog(currentCarData: currentCar);
+                }
                 else if (result == "focus" && currentCar.geoLocation != null) {
                   mapKey.currentState?.focusOnLatLng(
                     LatLng(
@@ -266,6 +294,10 @@ class _CarsPageState extends State<CarsPage> {
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                if (currentCar.isOwnedByMe()) const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Text('Edit'),
+                ),
                 if (currentCar.isOwnedByMe()) const PopupMenuItem<String>(
                   value: 'delete',
                   child: Text('Delete'),
@@ -321,7 +353,7 @@ class _CarsPageState extends State<CarsPage> {
                   icon: Icon(Icons.refresh),
                 ),
                 TextButton.icon(
-                  onPressed: openAddCarDialog,
+                  onPressed: openUpdateCarDialog,
                   label: Text("Add Car"),
                   icon: Icon(Icons.add),
                 ),

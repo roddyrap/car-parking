@@ -1,13 +1,29 @@
 {
-    "name": "car_parking",
-    "short_name": "car_parking",
+    "name": "Car Parking",
+    "short_name": "Car Parking",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "An app to coordinate car parking locations.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "screenshots": [
+        {
+            "src": "screenshots/car_swimming.png",
+            "sizes": "1081x2401",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "An example of a parked car (In the sea)"
+        },
+        {
+            "src": "screenshots/car_swimming_desktop.png",
+            "sizes": "1280x950",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "An example of a parked car (In the sea)"
+        }
+    ],
     "icons": [
         {
             "src": "icons/Icon-192.png",

@@ -33,7 +33,7 @@ class CarsPage extends StatefulWidget {
   // used by the build method of the State. Fields in a Widget subclass are
   // always marked "final".
 
-  final String title = "Cars";
+  final String title = "Car Parking Coordinator";
 
   @override
   State<CarsPage> createState() => _CarsPageState();
@@ -267,33 +267,47 @@ class _CarsPageState extends State<CarsPage> {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       controller: scrollController,
-      itemCount: carsData.length + 2 + buildHandleInt,
+      itemCount: carsData.length + 1 + buildHandleInt,
       itemBuilder: (context, index) {
         // Drag handle should be at the top if we build it.
-        if (buildHandle && index == 0) {
+        if (buildHandle) {
+          if (index == 0) {
+            return Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              )
+            );
+          }
+
+          index -= 1;
+        }
+
+        // The Refresh & Add Car buttons at the end of the list.
+        if (index == carsData.length) {
           return Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(10),
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 30,
+              children: [
+                TextButton.icon(
+                  onPressed: _refreshCars,
+                  label: Text("Refresh"),
+                  icon: Icon(Icons.refresh),
+                ),
+                TextButton.icon(
+                  onPressed: openAddCarDialog,
+                  label: Text("Add Car"),
+                  icon: Icon(Icons.add),
+                ),
+              ],
             )
           );
-        }
-
-        // Refresh button at the beginning.
-        if (index == buildHandleInt) {
-          return ElevatedButton.icon(onPressed: (){ _refreshCars(); }, icon: Icon(Icons.refresh), label: Text("Refresh Cars"));
-        }
-
-        index -= 1 + buildHandleInt;
-
-        // The add button at the end.
-        if (index == carsData.length) {
-          return ElevatedButton.icon(onPressed: (){ openAddCarDialog(); }, icon: Icon(Icons.add), label: Text("Add Car"));
         }
 
         return buildCarCard(carsData[index]);

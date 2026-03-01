@@ -27,4 +27,27 @@ class CarData {
     print("Is car occupied by me? ${occuppierEmail} == ${FirebaseAuth.instance.currentUser?.email}");
     return isOccupied() && (occuppierEmail == FirebaseAuth.instance.currentUser?.email);
   }
+
+  bool isOwnedByMe() {
+    return owner == FirebaseAuth.instance.currentUser?.uid;
+  }
+
+
+
+  Widget buildCarIcon() {
+    return CircleAvatar(
+      backgroundColor: this.color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+      radius: 15,
+      child: Transform.translate(
+        offset: const Offset(0, -1),
+        child: Center(
+          child: Icon(
+            Icons.directions_car,
+            color: this.color,
+            size: 20
+          )
+        )
+      )
+    );
+  }
 }

@@ -214,7 +214,7 @@ class _CarsPageState extends State<CarsPage> {
     return Card(
       color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
       child: ListTile(
-        leading: Icon(Icons.directions_car, color: currentCar.color),
+        leading: currentCar.buildCarIcon(),
         title: Text(currentCar.name),
         subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : currentCar.occuppierEmail!) : (currentCar.textLocation ?? "")),
         trailing: Row(
@@ -246,7 +246,7 @@ class _CarsPageState extends State<CarsPage> {
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
+                if (currentCar.isOwnedByMe()) const PopupMenuItem<String>(
                   value: 'delete',
                   child: Text('Delete'),
                 ),
@@ -343,7 +343,7 @@ class _CarsPageState extends State<CarsPage> {
     if (isMobile) {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(widget.title),
           actions: [
             IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))

@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'cars_data.dart';
 
 class MapWidget extends StatefulWidget {
@@ -31,8 +32,11 @@ class MapWidgetState extends State<MapWidget> {
   void initState() {
     super.initState();
 
-    // TODO: Doesn't work.
-    focusOnCurrentPosition();
+    // Only focus the map on the first time. I want to allow users to move the map freely.
+    updateClientPositionMaker(focusMap: true);
+    Timer.periodic(Duration(seconds: 5), (timer) {
+      updateClientPositionMaker();
+    });
   }
 
   LatLng getMapPosition() {
@@ -96,7 +100,7 @@ class MapWidgetState extends State<MapWidget> {
     mapController.move(position, mapController.camera.zoom);
   } 
 
-  Future<void> focusOnCurrentPosition() async {
+  Future<void> updateClientPositionMaker({bool focusMap = false}) async {
     var currentPosition = await getClientPosition();
     if (currentPosition == null) return;
 
@@ -106,12 +110,14 @@ class MapWidgetState extends State<MapWidget> {
       // Update the current location marker.
       clientPositionMarker = Marker(
         point: currentLatLng,
-        child: Icon(Icons.my_location, color: Colors.blue)
+        child: CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.my_location, color: Colors.blue))
       );
     });
 
     // Update the current map position.
-    mapController.move(currentLatLng, mapController.camera.zoom);
+    if (focusMap) {
+      mapController.move(currentLatLng, mapController.camera.zoom);
+    }
   }
 
   void setCarMarkers(List<CarData> carData) {
@@ -123,11 +129,7 @@ class MapWidgetState extends State<MapWidget> {
         rotate: true,
         child: Tooltip(
           message: car.name,
-          child: Icon(
-            Icons.directions_car,
-            color: car.color,
-            size: 40
-          )
+          child: car.buildCarIcon()
         ),
         point: LatLng(car.geoLocation!.latitude, car.geoLocation!.longitude)
       )).toList();
@@ -148,9 +150,12 @@ class MapWidgetState extends State<MapWidget> {
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'dev.roddyra.carparking',
         ),
-        FloatingActionButton(
-          onPressed: focusOnCurrentPosition,
-          child: Icon(Icons.my_location),
+        Padding(
+          padding: EdgeInsetsGeometry.all(5),
+          child: FloatingActionButton(
+            onPressed: () => updateClientPositionMaker(focusMap: true),
+            child: Icon(Icons.my_location),
+          )
         ),
         RichAttributionWidget(
           attributions: [
@@ -161,7 +166,7 @@ class MapWidgetState extends State<MapWidget> {
           ],
         ),
         MarkerLayer(
-          markers: markers + [?touchMarker, ?clientPositionMarker],
+          markers: [?touchMarker, ?clientPositionMarker] + markers,
         ),
       ],
     );

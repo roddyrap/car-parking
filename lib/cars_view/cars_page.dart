@@ -351,7 +351,7 @@ class _CarsPageState extends State<CarsPage> {
         ),
         body: Stack(
           children: [
-            Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
+            MapWidget(key: mapKey, clickMarker: false),
             DraggableScrollableSheet(
               initialChildSize: 0.2,
               minChildSize: 0.1,

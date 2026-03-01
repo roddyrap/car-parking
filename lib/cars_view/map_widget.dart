@@ -23,10 +23,11 @@ class MapWidgetState extends State<MapWidget> {
 
   final MapController mapController = MapController();
 
-  // LatLng clientPosition = 
   List<Marker> markers;
-  Marker? clientPositionMarker;
   Marker? touchMarker;
+
+  Timer? clientPositionTimer;
+  Marker? clientPositionMarker;
 
   @override
   void initState() {
@@ -34,9 +35,15 @@ class MapWidgetState extends State<MapWidget> {
 
     // Only focus the map on the first time. I want to allow users to move the map freely.
     updateClientPositionMaker(focusMap: true);
-    Timer.periodic(Duration(seconds: 5), (timer) {
+    clientPositionTimer = Timer.periodic(Duration(seconds: 5), (timer) {
       updateClientPositionMaker();
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    clientPositionTimer?.cancel();
   }
 
   LatLng getMapPosition() {
@@ -102,7 +109,9 @@ class MapWidgetState extends State<MapWidget> {
 
   Future<void> updateClientPositionMaker({bool focusMap = false}) async {
     var currentPosition = await getClientPosition();
-    if (currentPosition == null) return;
+
+    // We check if the widget is mounted because it might be closed by the time the position is found.
+    if (currentPosition == null || !mounted) return;
 
     var currentLatLng = LatLng(currentPosition.latitude, currentPosition.longitude);
     setState(() {

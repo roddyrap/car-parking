@@ -10,16 +10,16 @@
     "prefer_related_applications": false,
     "screenshots": [
         {
-            "src": "screenshots/car_swimming.png",
+            "src": "screenshots/car_swimming.webp",
             "sizes": "1081x2401",
-            "type": "image/png",
+            "type": "image/webp",
             "form_factor": "narrow",
             "label": "An example of a parked car (In the sea)"
         },
         {
-            "src": "screenshots/car_swimming_desktop.png",
+            "src": "screenshots/car_swimming_desktop.webp",
             "sizes": "1280x950",
-            "type": "image/png",
+            "type": "image/webp",
             "form_factor": "wide",
             "label": "An example of a parked car (In the sea)"
         }

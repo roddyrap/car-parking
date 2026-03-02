@@ -130,6 +130,8 @@ class MapWidgetState extends State<MapWidget> {
   }
 
   void setCarMarkers(List<CarData> carData) {
+    // TODO: This isn't great because the setState recreates the entire object, not just
+    //       the marker layer.
     setState(() {
       print("Updating actually displayed markers on the map!!!");
       markers = carData

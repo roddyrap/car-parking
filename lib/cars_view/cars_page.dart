@@ -49,12 +49,13 @@ class CarsPage extends StatefulWidget {
 
 class _CarsPageState extends State<CarsPage> {
   final GlobalKey<MapWidgetState> mapKey = GlobalKey();
-  Future<List<CarData>>? fetchCarsFuture;
+  ValueNotifier<List<CarData>> carsDataNotifier = ValueNotifier([]);
 
   @override
   void initState() {
     super.initState();
 
+    carsDataNotifier.addListener(() => mapKey.currentState?.setCarMarkers(carsDataNotifier.value));
     _refreshCars();
   }
 
@@ -333,7 +334,7 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  Widget buildVisibleCarsList(List<CarData> carsData, {ScrollController? scrollController, bool buildHandle = false}) {
+  Widget buildCarsList(List<CarData> carsData, {ScrollController? scrollController, bool buildHandle = false}) {
     int buildHandleInt = buildHandle ? 1 : 0;
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -387,24 +388,18 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  Widget buildVisibleCarsListFuture(Future<List<CarData>>? carsData, {ScrollController? scrollController, bool buildHandle = false}) {
-    return FutureBuilder(
-      future: fetchCarsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return Text("Error: ${snapshot.error}");
-        return buildVisibleCarsList(snapshot.data ?? [], scrollController: scrollController, buildHandle: buildHandle);
+  Widget createCarsListBuilder({ScrollController? scrollController, bool buildHandle = false}) {
+    return ValueListenableBuilder(
+      valueListenable: carsDataNotifier,
+      builder: (context, cars, _) {
+        return buildCarsList(cars, scrollController: scrollController, buildHandle: buildHandle);
       }
     );
   }
 
 // Calling this function will trigger BOTH FutureBuilders simultaneously
   void _refreshCars() {
-    fetchCarsFuture = fetchVisibleCars();
-    fetchCarsFuture!.then(
-      (cars) {
-        setState(() => mapKey.currentState?.setCarMarkers(cars));
-      }
-    );
+    fetchVisibleCars().then((cars) => carsDataNotifier.value = cars);
   }
 
   @override
@@ -442,8 +437,7 @@ class _CarsPageState extends State<CarsPage> {
                         BoxShadow(blurRadius: 10, color: Colors.black.withValues(alpha: 0.2)),
                       ],
                   ),
-                  child: buildVisibleCarsListFuture(
-                    fetchCarsFuture,
+                  child: createCarsListBuilder(
                     scrollController: scrollController,
                     buildHandle: true
                   )
@@ -466,7 +460,7 @@ class _CarsPageState extends State<CarsPage> {
         spacing: 2,
 
         children: [
-          ConstrainedBox(constraints: BoxConstraints(maxWidth: 350), child: buildVisibleCarsListFuture(fetchCarsFuture)),
+          ConstrainedBox(constraints: BoxConstraints(maxWidth: 350), child: createCarsListBuilder()),
           Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
         ],
       ),

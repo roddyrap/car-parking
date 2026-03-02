@@ -7,6 +7,67 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'cars_data.dart';
 
+class MarkersList extends ChangeNotifier {
+  List<Marker> _carMarkers = [];
+  Marker? _touchMarker;
+  Marker? _clientPositionMarker;
+
+  void updateCarMarkers(List<CarData> carData) {
+    _carMarkers = carData
+      .where((car) => car.geoLocation != null && !car.isOccupied())
+      .map((car) => Marker(
+        rotate: true,
+        child: Tooltip(
+          message: car.name,
+          child: car.buildCarIcon()
+        ),
+        point: LatLng(car.geoLocation!.latitude, car.geoLocation!.longitude)
+      )).toList();
+
+    notifyListeners();
+  }
+
+  void updateTouchMarker(LatLng touchLatLng) {
+    _touchMarker = Marker(
+      alignment: Alignment.topCenter,
+      point: touchLatLng,
+      rotate: true,
+      width: 80,
+      height: 80,
+      child: Transform.translate(
+        offset: const Offset(0, 24),
+        child: const Icon(Icons.location_on, color: Colors.red, size: 40)
+      ),
+    );
+
+    notifyListeners();
+  }
+
+  void updateCurrentPositionMarker(LatLng currentLatLng) {
+    _clientPositionMarker = Marker(
+      point: currentLatLng,
+      child: const CircleAvatar(
+        backgroundColor: Colors.white,
+        child: Icon(Icons.my_location, color: Colors.blue)
+      )
+    );
+
+    notifyListeners();
+  }
+
+  LatLng? getTouchMarkerPosition() {
+    return _touchMarker?.point;
+  }
+
+  List<Marker> getMarkers() {
+    return [
+      ?_clientPositionMarker,
+      ..._carMarkers,
+      ?_touchMarker
+    ];
+  }
+}
+
 class MapWidget extends StatefulWidget {
   final bool clickMarker;
 
@@ -17,17 +78,12 @@ class MapWidget extends StatefulWidget {
 }
 
 class MapWidgetState extends State<MapWidget> {
-  MapWidgetState() :
-      this.markers = [],
-      this.touchMarker = null;
+  MapWidgetState();
 
   final MapController mapController = MapController();
 
-  List<Marker> markers;
-  Marker? touchMarker;
-
+  MarkersList markers = MarkersList();
   Timer? clientPositionTimer;
-  Marker? clientPositionMarker;
 
   @override
   void initState() {
@@ -85,22 +141,11 @@ class MapWidgetState extends State<MapWidget> {
   void handleTap(TapPosition tapPosition, LatLng latlng) {
     // This function shouldn't be wired to respond to clicks if that's the case, but I want to be safe.
     if (!widget.clickMarker) return;
-
-    setState(() {
-      touchMarker = Marker(
-        point: latlng,
-        rotate: true,
-        width: 80,
-        height: 80,
-        child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-      );
-    });
+    markers.updateTouchMarker(latlng);
   }
 
   LatLng? getTouchMarkerPosition() {
-    if (touchMarker == null) return null;
-
-    return touchMarker!.point;
+    return markers.getTouchMarkerPosition();
   }
 
   void focusOnLatLng(LatLng position) {
@@ -114,14 +159,7 @@ class MapWidgetState extends State<MapWidget> {
     if (currentPosition == null || !mounted) return;
 
     var currentLatLng = LatLng(currentPosition.latitude, currentPosition.longitude);
-    setState(() {
-      print("Setting current position marker!!!");
-      // Update the current location marker.
-      clientPositionMarker = Marker(
-        point: currentLatLng,
-        child: CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.my_location, color: Colors.blue))
-      );
-    });
+    markers.updateCurrentPositionMarker(currentLatLng);
 
     // Update the current map position.
     if (focusMap) {
@@ -130,21 +168,7 @@ class MapWidgetState extends State<MapWidget> {
   }
 
   void setCarMarkers(List<CarData> carData) {
-    // TODO: This isn't great because the setState recreates the entire object, not just
-    //       the marker layer.
-    setState(() {
-      print("Updating actually displayed markers on the map!!!");
-      markers = carData
-      .where((car) => car.geoLocation != null && !car.isOccupied())
-      .map((car) => Marker(
-        rotate: true,
-        child: Tooltip(
-          message: car.name,
-          child: car.buildCarIcon()
-        ),
-        point: LatLng(car.geoLocation!.latitude, car.geoLocation!.longitude)
-      )).toList();
-    });
+    markers.updateCarMarkers(carData);
   }
 
   @override
@@ -176,8 +200,13 @@ class MapWidgetState extends State<MapWidget> {
             ),
           ],
         ),
-        MarkerLayer(
-          markers: [?touchMarker, ?clientPositionMarker] + markers,
+        ListenableBuilder(
+          listenable: markers,
+          builder: (context, _) {
+            return MarkerLayer(
+              markers: markers.getMarkers(),
+            );
+          }
         ),
       ],
     );

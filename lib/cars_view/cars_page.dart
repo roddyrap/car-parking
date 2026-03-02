@@ -427,7 +427,8 @@ class _CarsPageState extends State<CarsPage> {
             MapWidget(key: mapKey, clickMarker: false),
             DraggableScrollableSheet(
               initialChildSize: 0.2,
-              minChildSize: 0.1,
+              // It's important that this be low so the attributions can be seen.
+              minChildSize: 0.03,
               builder: (context, scrollController){
                 return Container(
                   decoration: BoxDecoration(

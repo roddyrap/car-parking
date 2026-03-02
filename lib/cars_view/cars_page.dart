@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'cars_data.dart';
 import 'map_widget.dart';
-import 'editable_string_list.dart';
+import 'shared_email_list.dart';
 
 const Map<String, Color> CAR_COLORS = {
   "white": Colors.white,
@@ -102,18 +101,18 @@ class _CarsPageState extends State<CarsPage> {
     }).then((a) {
       // Update the map markers.
       _refreshCars();
-
-      print("Parked car!!!!!11!!11!!1!!!");
     });
   }
 
   // If we called with no `currentCarData` then adds a new car.
   void openUpdateCarDialog({CarData? currentCarData}) {
-    GlobalKey<EditableStringListState> sharedEmailsKey = GlobalKey();
+    GlobalKey<SharedEmailsListState> sharedEmailsKey = GlobalKey();
 
     var carNameTextController = TextEditingController();
     carNameTextController.text = currentCarData != null ? currentCarData.name : "";
-    String carColorName = (currentCarData != null ? getColorName(currentCarData.color) : null) ?? CAR_COLORS.keys.first;
+    ValueNotifier<String> carColorName = ValueNotifier(
+      (currentCarData != null ? getColorName(currentCarData.color) : null) ?? CAR_COLORS.keys.first
+    );
 
     showDialog(
       context: context,
@@ -128,7 +127,7 @@ class _CarsPageState extends State<CarsPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add),
+                      Icon(currentCarData != null ? Icons.edit : Icons.add),
                       Text(
                         currentCarData != null ? "Edit a Car" : "Add a New Car",
                         style: Theme.of(context).textTheme.titleLarge
@@ -136,23 +135,44 @@ class _CarsPageState extends State<CarsPage> {
                     ]
                   )
                 ),
-                TextField(controller: carNameTextController, decoration: const InputDecoration(label: Text("Car Name"))),
-                DropdownMenu<String>(
-                  label: Text("Color"),
-                  requestFocusOnTap: false,
-                  onSelected: (value){ carColorName = value!; },
-                  initialSelection: carColorName,
-                  dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
+                Row(
+                  children: [
+                    DropdownMenu<String>(
+                      width: 160,
+                      leadingIcon: ValueListenableBuilder(
+                        valueListenable: carColorName,
+                        builder: (context, colorName, _) {
+                          return Icon(
+                            Icons.square_rounded,
+                            color: CAR_COLORS[colorName] ?? CAR_COLORS.values.first
+                          );
+                        },
+                      ),
+                      label: const Text("Color"),
+                      requestFocusOnTap: false,
+                      onSelected: (value){ carColorName.value = value!; },
+                      initialSelection: carColorName.value,
+                      dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: carNameTextController,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.directions_car),
+                          label: Text("Car Name")
+                        )
+                      ),
+                    )
+                  ]
                 ),
-                const Text(textAlign: TextAlign.start, "Shared Emails:"),
-                EditableStringList(key: sharedEmailsKey, initialItems: currentCarData?.sharedEmails ?? []),
+                SharedEmailsList(key: sharedEmailsKey, initialItems: currentCarData?.sharedEmails ?? []),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
                     TextButton(onPressed: () {
                       // TODO: Add car limit... (Should do it in firebase though).
-                      Color carColor = CAR_COLORS[carColorName] ?? CAR_COLORS["white"]!;
+                      Color carColor = CAR_COLORS[carColorName.value] ?? CAR_COLORS["white"]!;
                       var db = FirebaseFirestore.instance;
                       var dbCarData = {
                         "owner": FirebaseAuth.instance.currentUser!.uid,
@@ -223,7 +243,7 @@ class _CarsPageState extends State<CarsPage> {
                   children: [
                     TextButton(onPressed: (){ Navigator.pop(context); }, child: const Text("Cancel")),
                     TextButton(onPressed: () {
-                      LatLng? mapPosition = parkMapKey.currentState!.getTouchMarkerPosition();
+                      LatLng? mapPosition = parkMapKey.currentState?.getTouchMarkerPosition();
                       tryPark(carID, parkTextController.text, mapPosition);
 
                       Navigator.pop(context);
@@ -273,7 +293,6 @@ class _CarsPageState extends State<CarsPage> {
             IconButton(
               onPressed: () { tryTakeCar(currentCar); },
               icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
-              // color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue : Colors.red) : Colors.white
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),// 2. What happens when a user picks an option
@@ -373,7 +392,7 @@ class _CarsPageState extends State<CarsPage> {
       future: fetchCarsFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) return Text("Error: ${snapshot.error}");
-        return buildVisibleCarsList(snapshot.data!, scrollController: scrollController, buildHandle: buildHandle);
+        return buildVisibleCarsList(snapshot.data ?? [], scrollController: scrollController, buildHandle: buildHandle);
       }
     );
   }

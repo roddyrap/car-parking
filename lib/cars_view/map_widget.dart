@@ -80,37 +80,44 @@ class MapWidget extends StatefulWidget {
 class MapWidgetState extends State<MapWidget> {
   MapWidgetState();
 
-  final MapController mapController = MapController();
+  final MapController _mapController = MapController();
 
-  MarkersList markers = MarkersList();
-  Timer? clientPositionTimer;
+  final MarkersList _markers = MarkersList();
+  Timer? _clientPositionTimer;
 
   @override
   void initState() {
     super.initState();
 
     // Only focus the map on the first time. I want to allow users to move the map freely.
-    updateClientPositionMaker(focusMap: true);
-    clientPositionTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      updateClientPositionMaker();
+    _updateClientPositionMaker(focusMap: true);
+    _clientPositionTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      _updateClientPositionMaker();
     });
   }
 
   @override
   void dispose() {
     super.dispose();
-    clientPositionTimer?.cancel();
+    _clientPositionTimer?.cancel();
   }
 
-  LatLng getMapPosition() {
-    return mapController.camera.center;
+  LatLng? getTouchMarkerPosition() {
+    return _markers.getTouchMarkerPosition();
   }
 
-  static Future<Position?> getClientPosition() async {
+  void focusOnLatLng(LatLng position) {
+    _mapController.move(position, _mapController.camera.zoom);
+  } 
+
+  void setCarMarkers(List<CarData> carData) {
+    _markers.updateCarMarkers(carData);
+  }
+
+  static Future<Position?> _getClientPosition() async {
     // Check if location services are enabled
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print("Failed to get location: Service disabled");
       return null;
     }
 
@@ -118,67 +125,48 @@ class MapWidgetState extends State<MapWidget> {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-      print("Failed to get location: No permission");
+      if (!(permission == LocationPermission.whileInUse || permission ==  LocationPermission.always)) {
         return null;
       }
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      print("Failed to get location: No permission, forever");
-      return null;
-    }
-
     // Get the current position
     try {
-      return Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      return Geolocator.getCurrentPosition();
     } catch (e) {
-      print("Failed to get location: Failed to get current position");
       return null;
     }
   }
 
-  void handleTap(TapPosition tapPosition, LatLng latlng) {
+  void _handleTap(TapPosition tapPosition, LatLng latlng) {
     // This function shouldn't be wired to respond to clicks if that's the case, but I want to be safe.
     if (!widget.clickMarker) return;
-    markers.updateTouchMarker(latlng);
+    _markers.updateTouchMarker(latlng);
   }
 
-  LatLng? getTouchMarkerPosition() {
-    return markers.getTouchMarkerPosition();
-  }
-
-  void focusOnLatLng(LatLng position) {
-    mapController.move(position, mapController.camera.zoom);
-  } 
-
-  Future<void> updateClientPositionMaker({bool focusMap = false}) async {
-    var currentPosition = await getClientPosition();
+  Future<void> _updateClientPositionMaker({bool focusMap = false}) async {
+    var currentPosition = await _getClientPosition();
 
     // We check if the widget is mounted because it might be closed by the time the position is found.
     if (currentPosition == null || !mounted) return;
 
     var currentLatLng = LatLng(currentPosition.latitude, currentPosition.longitude);
-    markers.updateCurrentPositionMarker(currentLatLng);
+    _markers.updateCurrentPositionMarker(currentLatLng);
 
     // Update the current map position.
     if (focusMap) {
-      mapController.move(currentLatLng, mapController.camera.zoom);
+      _mapController.move(currentLatLng, _mapController.camera.zoom);
     }
-  }
-
-  void setCarMarkers(List<CarData> carData) {
-    markers.updateCarMarkers(carData);
   }
 
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
-      mapController: mapController,
+      mapController: _mapController,
       options: MapOptions(
         initialCenter: LatLng(32.0853, 34.7818), // Center the map over Tel Aviv, Israel.
         initialZoom: 18.0,
-        onTap: widget.clickMarker ? handleTap : null,
+        onTap: widget.clickMarker ? _handleTap : null,
       ),
       children: [
         TileLayer(
@@ -188,7 +176,7 @@ class MapWidgetState extends State<MapWidget> {
         Padding(
           padding: EdgeInsetsGeometry.all(5),
           child: FloatingActionButton(
-            onPressed: () => updateClientPositionMaker(focusMap: true),
+            onPressed: () => _updateClientPositionMaker(focusMap: true),
             child: Icon(Icons.my_location),
           )
         ),
@@ -201,10 +189,10 @@ class MapWidgetState extends State<MapWidget> {
           ],
         ),
         ListenableBuilder(
-          listenable: markers,
+          listenable: _markers,
           builder: (context, _) {
             return MarkerLayer(
-              markers: markers.getMarkers(),
+              markers: _markers.getMarkers(),
             );
           }
         ),

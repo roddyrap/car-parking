@@ -7,7 +7,7 @@ import 'cars_data.dart';
 import 'map_widget.dart';
 import 'shared_email_list.dart';
 
-const Map<String, Color> CAR_COLORS = {
+const Map<String, Color> carColors = {
   "white": Colors.white,
   "black": Colors.black,
   "gray": Colors.grey,
@@ -21,9 +21,9 @@ const Map<String, Color> CAR_COLORS = {
 };
 
 String? getColorName(Color color) {
-  for (var colorName in CAR_COLORS.keys) {
+  for (var colorName in carColors.keys) {
     // Convert to ARGB32 in order to avoid floating-point imprecision.
-    if (color.toARGB32() == CAR_COLORS[colorName]?.toARGB32()) return colorName;
+    if (color.toARGB32() == carColors[colorName]?.toARGB32()) return colorName;
   }
 
   return null;
@@ -32,15 +32,6 @@ String? getColorName(Color color) {
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title = "Car Parking Coordinator";
 
   @override
@@ -48,22 +39,21 @@ class CarsPage extends StatefulWidget {
 }
 
 class _CarsPageState extends State<CarsPage> {
-  final GlobalKey<MapWidgetState> mapKey = GlobalKey();
-  ValueNotifier<List<CarData>> carsDataNotifier = ValueNotifier([]);
+  final GlobalKey<MapWidgetState> _mapKey = GlobalKey();
+  final ValueNotifier<List<CarData>> _carsDataNotifier = ValueNotifier([]);
 
   @override
   void initState() {
     super.initState();
 
-    carsDataNotifier.addListener(() => mapKey.currentState?.setCarMarkers(carsDataNotifier.value));
+    _carsDataNotifier.addListener(() => _mapKey.currentState?.setCarMarkers(_carsDataNotifier.value));
     _refreshCars();
   }
 
-  static Future<List<CarData>> fetchVisibleCars() {
+  static Future<List<CarData>> _fetchVisibleCars() {
     final db = FirebaseFirestore.instance;
 
     List<CarData> cars = List.empty(growable: true);
-    print("UID: ${FirebaseAuth.instance.currentUser!.uid}");
     return db.collection("cars").where(
       Filter.or(
         Filter("owner", isEqualTo: FirebaseAuth.instance.currentUser!.uid),
@@ -73,7 +63,7 @@ class _CarsPageState extends State<CarsPage> {
         for (var docSnapshot in querySnapshot.docs) {
           cars.add(CarData(
             carID: docSnapshot.id,
-            color: Color.new(docSnapshot["color"]),
+            color: Color(docSnapshot["color"]),
             name: docSnapshot["name"],
             owner: docSnapshot["owner"],
             sharedEmails: List<String>.from(docSnapshot["shared_emails"]),
@@ -83,15 +73,12 @@ class _CarsPageState extends State<CarsPage> {
           ));
         }
 
-        print("Number of cars: ${querySnapshot.docs.length}");
         return cars;
       },
-      onError: (e) => print("Error completing: $e"),
     );
   }
 
-  void tryPark(String carID, String textLocation, LatLng? position) {
-    print(FirebaseAuth.instance.currentUser!.uid);
+  void _tryPark(String carID, String textLocation, LatLng? position) {
     var db = FirebaseFirestore.instance;
     var modifiedCar = db.collection("cars").doc(carID);
 
@@ -106,13 +93,13 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   // If we called with no `currentCarData` then adds a new car.
-  void openUpdateCarDialog({CarData? currentCarData}) {
+  void _openUpdateCarDialog({CarData? currentCarData}) {
     GlobalKey<SharedEmailsListState> sharedEmailsKey = GlobalKey();
 
     var carNameTextController = TextEditingController();
     carNameTextController.text = currentCarData != null ? currentCarData.name : "";
     ValueNotifier<String> carColorName = ValueNotifier(
-      (currentCarData != null ? getColorName(currentCarData.color) : null) ?? CAR_COLORS.keys.first
+      (currentCarData != null ? getColorName(currentCarData.color) : null) ?? carColors.keys.first
     );
 
     showDialog(
@@ -145,7 +132,7 @@ class _CarsPageState extends State<CarsPage> {
                         builder: (context, colorName, _) {
                           return Icon(
                             Icons.square_rounded,
-                            color: CAR_COLORS[colorName] ?? CAR_COLORS.values.first
+                            color: carColors[colorName] ?? carColors.values.first
                           );
                         },
                       ),
@@ -153,7 +140,7 @@ class _CarsPageState extends State<CarsPage> {
                       requestFocusOnTap: false,
                       onSelected: (value){ carColorName.value = value!; },
                       initialSelection: carColorName.value,
-                      dropdownMenuEntries: CAR_COLORS.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
+                      dropdownMenuEntries: carColors.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
                     ),
                     Expanded(
                       child: TextField(
@@ -173,7 +160,7 @@ class _CarsPageState extends State<CarsPage> {
                     TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
                     TextButton(onPressed: () {
                       // TODO: Add car limit... (Should do it in firebase though).
-                      Color carColor = CAR_COLORS[carColorName.value] ?? CAR_COLORS["white"]!;
+                      Color carColor = carColors[carColorName.value] ?? carColors["white"]!;
                       var db = FirebaseFirestore.instance;
                       var dbCarData = {
                         "owner": FirebaseAuth.instance.currentUser!.uid,
@@ -204,7 +191,7 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  void openCarParkDialog(String carID) {
+  void _openCarParkDialog(String carID) {
     GlobalKey<MapWidgetState> parkMapKey  = GlobalKey();
     TextEditingController     parkTextController = TextEditingController();
 
@@ -245,7 +232,7 @@ class _CarsPageState extends State<CarsPage> {
                     TextButton(onPressed: (){ Navigator.pop(context); }, child: const Text("Cancel")),
                     TextButton(onPressed: () {
                       LatLng? mapPosition = parkMapKey.currentState?.getTouchMarkerPosition();
-                      tryPark(carID, parkTextController.text, mapPosition);
+                      _tryPark(carID, parkTextController.text, mapPosition);
 
                       Navigator.pop(context);
                     }, child: const Text("Park"))
@@ -259,24 +246,22 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  void tryDeleteCar(String carID) {
+  void _tryDeleteCar(String carID) {
     FirebaseFirestore.instance.collection("cars").doc(carID).delete().then((_){ _refreshCars(); });
   }
 
-  void tryTakeCar(CarData car) {
+  void _tryTakeCar(CarData car) {
     String? newOccupier = FirebaseAuth.instance.currentUser?.email;
     if (car.isOccupiedByMe()) newOccupier = null;
 
-    print("Trying to take a car");
     FirebaseFirestore.instance.collection("cars").doc(car.carID).update({"occupier_email": newOccupier}).then(
       (_){
-        print("Updating taker state");
         _refreshCars();
       }
     );
   }
 
-  Widget buildCarCard(CarData currentCar) {
+  Widget _buildCarCard(CarData currentCar) {
     return Card(
       color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
       child: ListTile(
@@ -287,25 +272,25 @@ class _CarsPageState extends State<CarsPage> {
           mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
           children: [
             IconButton(
-              onPressed: (){ openCarParkDialog(currentCar.carID); },
+              onPressed: (){ _openCarParkDialog(currentCar.carID); },
               icon: Icon(Icons.local_parking),
               color: Colors.blue
             ),
             IconButton(
-              onPressed: () { tryTakeCar(currentCar); },
+              onPressed: () { _tryTakeCar(currentCar); },
               icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),// 2. What happens when a user picks an option
               onSelected: (String result) {
                 if (result == "delete") {
-                  tryDeleteCar(currentCar.carID);
+                  _tryDeleteCar(currentCar.carID);
                 }
                 if (result == "edit") {
-                  openUpdateCarDialog(currentCarData: currentCar);
+                  _openUpdateCarDialog(currentCarData: currentCar);
                 }
                 else if (result == "focus" && currentCar.geoLocation != null) {
-                  mapKey.currentState?.focusOnLatLng(
+                  _mapKey.currentState?.focusOnLatLng(
                     LatLng(
                       currentCar.geoLocation!.latitude,
                       currentCar.geoLocation!.longitude
@@ -334,7 +319,7 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  Widget buildCarsList(List<CarData> carsData, {ScrollController? scrollController, bool buildHandle = false}) {
+  Widget _buildCarsList(List<CarData> carsData, {ScrollController? scrollController, bool buildHandle = false}) {
     int buildHandleInt = buildHandle ? 1 : 0;
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -374,7 +359,7 @@ class _CarsPageState extends State<CarsPage> {
                   icon: const Icon(Icons.refresh),
                 ),
                 TextButton.icon(
-                  onPressed: openUpdateCarDialog,
+                  onPressed: _openUpdateCarDialog,
                   label: const Text("Add Car"),
                   icon: const Icon(Icons.add),
                 ),
@@ -383,23 +368,23 @@ class _CarsPageState extends State<CarsPage> {
           );
         }
 
-        return buildCarCard(carsData[index]);
+        return _buildCarCard(carsData[index]);
       }
     );
   }
 
-  Widget createCarsListBuilder({ScrollController? scrollController, bool buildHandle = false}) {
+  Widget _createCarsListBuilder({ScrollController? scrollController, bool buildHandle = false}) {
     return ValueListenableBuilder(
-      valueListenable: carsDataNotifier,
+      valueListenable: _carsDataNotifier,
       builder: (context, cars, _) {
-        return buildCarsList(cars, scrollController: scrollController, buildHandle: buildHandle);
+        return _buildCarsList(cars, scrollController: scrollController, buildHandle: buildHandle);
       }
     );
   }
 
 // Calling this function will trigger BOTH FutureBuilders simultaneously
   void _refreshCars() {
-    fetchVisibleCars().then((cars) => carsDataNotifier.value = cars);
+    _fetchVisibleCars().then((cars) => _carsDataNotifier.value = cars);
   }
 
   @override
@@ -407,12 +392,6 @@ class _CarsPageState extends State<CarsPage> {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isMobile = screenWidth < 600;
 
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     if (isMobile) {
       return Scaffold(
         appBar: AppBar(
@@ -424,7 +403,7 @@ class _CarsPageState extends State<CarsPage> {
         ),
         body: Stack(
           children: [
-            MapWidget(key: mapKey, clickMarker: false),
+            MapWidget(key: _mapKey, clickMarker: false),
             DraggableScrollableSheet(
               initialChildSize: 0.2,
               // It's important that this be low so the attributions can be seen.
@@ -438,7 +417,7 @@ class _CarsPageState extends State<CarsPage> {
                         BoxShadow(blurRadius: 10, color: Colors.black.withValues(alpha: 0.2)),
                       ],
                   ),
-                  child: createCarsListBuilder(
+                  child: _createCarsListBuilder(
                     scrollController: scrollController,
                     buildHandle: true
                   )
@@ -461,8 +440,8 @@ class _CarsPageState extends State<CarsPage> {
         spacing: 2,
 
         children: [
-          ConstrainedBox(constraints: BoxConstraints(maxWidth: 350), child: createCarsListBuilder()),
-          Expanded(child: MapWidget(key: mapKey, clickMarker: false)),
+          ConstrainedBox(constraints: BoxConstraints(maxWidth: 350), child: _createCarsListBuilder()),
+          Expanded(child: MapWidget(key: _mapKey, clickMarker: false)),
         ],
       ),
     );

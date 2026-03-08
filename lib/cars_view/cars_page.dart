@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'cars_data.dart';
 import 'map_widget.dart';
@@ -27,6 +29,17 @@ String? getColorName(Color color) {
   }
 
   return null;
+}
+
+Future<void> fallbackUrlLaunch(Uri uri, Uri fallbackUri, {LaunchMode uriMode = LaunchMode.platformDefault, LaunchMode fallbackUriMode = LaunchMode.platformDefault }) async {
+  try {
+    bool urlLaunched = await launchUrl(uri, mode: uriMode);
+      if (!urlLaunched) {
+        throw Exception();
+      }
+  } catch (e) {
+    launchUrl(fallbackUri, mode: fallbackUriMode);
+  }
 }
 
 class CarsPage extends StatefulWidget {
@@ -278,6 +291,7 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   Widget _buildCarCard(CarData currentCar) {
+    bool isLocationPresent = !currentCar.isOccupied() && currentCar.geoLocation != null;
     return Card(
       color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
       child: ListTile(
@@ -305,13 +319,32 @@ class _CarsPageState extends State<CarsPage> {
                 if (result == "edit") {
                   _openUpdateCarDialog(currentCarData: currentCar);
                 }
-                else if (result == "focus" && currentCar.geoLocation != null) {
+                else if (result == "focus" && isLocationPresent) {
                   _mapKey.currentState?.focusOnLatLng(
                     LatLng(
                       currentCar.geoLocation!.latitude,
                       currentCar.geoLocation!.longitude
                     )
                   );
+                }
+                else if (result == "navigate" && isLocationPresent) {
+                  final lat = currentCar.geoLocation!.latitude;
+                  final lng = currentCar.geoLocation!.longitude;
+
+                  // Use the universal 'geo' URI for Android/IOS default app support, and open
+                  // google maps on non-mobile web platforms.
+                  final Uri geoUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng");
+                  final Uri gmapsUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
+                  if (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) {
+                    fallbackUrlLaunch(
+                      geoUri,
+                      gmapsUri,
+                      fallbackUriMode: LaunchMode.externalApplication
+                    );
+                  }
+                  else {
+                    launchUrl(gmapsUri, mode: LaunchMode.externalApplication);
+                  }
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -323,10 +356,16 @@ class _CarsPageState extends State<CarsPage> {
                   value: 'delete',
                   child: Text('Delete'),
                 ),
-                if (!currentCar.isOccupied() && currentCar.geoLocation != null) const PopupMenuItem<String>(
-                  value: 'focus',
-                  child: Text('Focus'),
-                ),
+                if (isLocationPresent) ...[
+                  const PopupMenuItem<String>(
+                    value: 'focus',
+                    child: Text('Focus'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'navigate',
+                    child: Text('Navigate')
+                  ),
+                ]
               ],
             ),
           ]

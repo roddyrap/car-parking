@@ -159,7 +159,6 @@ class _CarsPageState extends State<CarsPage> {
                   children: [
                     TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
                     TextButton(onPressed: () {
-                      // TODO: Add car limit... (Should do it in firebase though).
                       Color carColor = carColors[carColorName.value] ?? carColors["white"]!;
                       var db = FirebaseFirestore.instance;
                       var dbCarData = {
@@ -175,7 +174,14 @@ class _CarsPageState extends State<CarsPage> {
                         dbUpdateFuture = db.collection("cars").doc(currentCarData.carID).update(dbCarData);
                       }
                       else {
-                        dbUpdateFuture = db.collection("cars").add(dbCarData);
+                        final dbBatchOperation = db.batch();
+
+                        final userRef = db.collection('users').doc(FirebaseAuth.instance.currentUser!.uid);
+                        final carRef = db.collection("cars").doc();
+                        dbBatchOperation.set(userRef, {'car_count': FieldValue.increment(1)}, SetOptions(merge: true));
+                        dbBatchOperation.set(carRef, dbCarData);
+
+                        dbUpdateFuture = dbBatchOperation.commit();
                       }
 
                       dbUpdateFuture.then((docReference){ _refreshCars(); });
@@ -247,7 +253,17 @@ class _CarsPageState extends State<CarsPage> {
   }
 
   void _tryDeleteCar(String carID) {
-    FirebaseFirestore.instance.collection("cars").doc(carID).delete().then((_){ _refreshCars(); });
+    final db = FirebaseFirestore.instance;
+
+    final dbBatchOperation = db.batch();
+
+    final userRef = db.collection('users').doc(FirebaseAuth.instance.currentUser!.uid);
+    final carRef = db.collection("cars").doc(carID);
+
+    dbBatchOperation.set(userRef, {'car_count': FieldValue.increment(-1)}, SetOptions(merge: true));
+    dbBatchOperation.delete(carRef);
+
+    dbBatchOperation.commit().then((_){ _refreshCars(); });
   }
 
   void _tryTakeCar(CarData car) {

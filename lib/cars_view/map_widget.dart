@@ -174,19 +174,15 @@ class MapWidgetState extends State<MapWidget> {
           userAgentPackageName: 'dev.roddyra.carparking',
         ),
         Padding(
-          padding: EdgeInsetsGeometry.all(5),
+          padding: EdgeInsetsGeometry.only(left: 10, right: 0, top: 30, bottom: 0),
           child: FloatingActionButton(
             onPressed: () => _updateClientPositionMaker(focusMap: true),
             child: Icon(Icons.my_location),
           )
         ),
-        RichAttributionWidget(
-          attributions: [
-            TextSourceAttribution(
-              'OpenStreetMap contributors',
-              onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')), // (external)
-            ),
-          ],
+        SimpleAttributionWidget(
+          source: const Text("OpenStreetMap under the 'Open Database Licese' (ODbL)"),
+          alignment: Alignment.topLeft,
         ),
         ListenableBuilder(
           listenable: _markers,

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -488,7 +489,20 @@ class _CarsPageState extends State<CarsPage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
         actions: [
-          IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))
+          IconButton(
+            onPressed: (){ launchUrl(Uri.parse("https://github.com/roddyrap/car-parking"), mode: LaunchMode.externalApplication); },
+            icon: SvgPicture.asset(
+              'assets/GitHub_Invertocat_White.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
+            ),
+          ),
+          IconButton(
+            onPressed: (){ FirebaseAuth.instance.signOut(); },
+            icon: Icon(Icons.logout),
+            color: Theme.of(context).colorScheme.onSurface,
+          )
         ],
       ),
       body: Row(

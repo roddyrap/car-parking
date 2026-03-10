@@ -487,7 +487,18 @@ class _CarsPageState extends State<CarsPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Row(
+          spacing: 5,
+          children: [
+            SvgPicture.asset(
+              "assets/logo/new_logo.svg",
+              width: 40,
+              height: 40,
+              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
+            ),
+            Text(widget.title)
+          ]
+        ),
         actions: [
           IconButton(
             onPressed: (){ launchUrl(Uri.parse("https://github.com/roddyrap/car-parking"), mode: LaunchMode.externalApplication); },

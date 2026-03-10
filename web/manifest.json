@@ -1,6 +1,7 @@
 {
     "name": "Car Parking",
     "short_name": "Car Parking",
+    "id": "/",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

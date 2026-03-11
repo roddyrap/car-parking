@@ -69,8 +69,9 @@ class MarkersList extends ChangeNotifier {
 
 class MapWidget extends StatefulWidget {
   final bool clickMarker;
+  final Alignment attributionsAlignment;
 
-  const MapWidget({super.key, required this.clickMarker});
+  const MapWidget({super.key, required this.clickMarker, this.attributionsAlignment = Alignment.bottomRight});
 
   @override
   State<MapWidget> createState() => MapWidgetState();
@@ -160,6 +161,10 @@ class MapWidgetState extends State<MapWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // The top(Center,Left,Right) have -1 as the y alignment. Essentially, if the attribution is
+    // at the top we want more padding so the button won't overlap with it.
+    final focusButtonTopPadding = 10.0 + (widget.attributionsAlignment.y == -1 ? 20.0 : 0.0);
+
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
@@ -170,18 +175,27 @@ class MapWidgetState extends State<MapWidget> {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'dev.roddyra.carparking',
+          userAgentPackageName: 'dev.roddyra.carpark',
         ),
         Padding(
-          padding: EdgeInsetsGeometry.only(left: 10, right: 0, top: 30, bottom: 0),
+          padding: EdgeInsetsGeometry.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
           child: FloatingActionButton(
             onPressed: () => _updateClientPositionMaker(focusMap: true),
-            child: Icon(Icons.my_location),
+            child: const Icon(Icons.my_location),
           )
         ),
-        SimpleAttributionWidget(
-          source: const Text("OpenStreetMap under the 'Open Database Licese' (ODbL)"),
-          alignment: Alignment.topLeft,
+        Align(
+          alignment: widget.attributionsAlignment,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding: EdgeInsetsGeometry.only(left: 5, right: 5),
+              color: Theme.of(context).colorScheme.surface,
+              child: const Text(
+                "flutter_map | © OpenStreetMap under the 'Open Database Licese' (ODbL)",
+              )
+            )
+          )
         ),
         ListenableBuilder(
           listenable: _markers,

@@ -447,6 +447,7 @@ class _CarsPageState extends State<CarsPage> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isMobile = screenWidth < 600;
+    Alignment mapAttributionAlignment = isMobile ? Alignment.topLeft : Alignment.bottomRight;
 
     final pageTitle = Row(
       spacing: 5,
@@ -489,7 +490,7 @@ class _CarsPageState extends State<CarsPage> {
         appBar: pageAppBar,
         body: Stack(
           children: [
-            MapWidget(key: _mapKey, clickMarker: false),
+            MapWidget(key: _mapKey, clickMarker: false, attributionsAlignment: mapAttributionAlignment,),
             DraggableScrollableSheet(
               initialChildSize: 0.2,
               // It's important that this be low so the attributions can be seen.

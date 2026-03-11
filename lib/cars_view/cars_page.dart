@@ -448,15 +448,45 @@ class _CarsPageState extends State<CarsPage> {
     double screenWidth = MediaQuery.of(context).size.width;
     bool isMobile = screenWidth < 600;
 
+    final pageTitle = Row(
+      spacing: 5,
+      children: [
+        SvgPicture.asset(
+          "assets/logo/new_logo.svg",
+          width: 40,
+          height: 40,
+          colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
+        ),
+        Text(widget.title)
+      ]
+    );
+
+    final pageActions = [
+      IconButton(
+        onPressed: (){ launchUrl(Uri.parse("https://github.com/roddyrap/car-parking"), mode: LaunchMode.externalApplication); },
+        icon: SvgPicture.asset(
+          'assets/GitHub_Invertocat_White.svg',
+          width: 24,
+          height: 24,
+          colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
+        ),
+      ),
+      IconButton(
+        onPressed: (){ FirebaseAuth.instance.signOut(); },
+        icon: const Icon(Icons.logout),
+        color: Theme.of(context).colorScheme.onSurface,
+      )
+    ];
+
+    final pageAppBar = AppBar(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      title: pageTitle,
+      actions: pageActions,
+    );
+
     if (isMobile) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          title: Text(widget.title),
-          actions: [
-            IconButton(onPressed: (){ FirebaseAuth.instance.signOut(); }, icon: Icon(Icons.logout))
-          ],
-        ),
+        appBar: pageAppBar,
         body: Stack(
           children: [
             MapWidget(key: _mapKey, clickMarker: false),
@@ -484,38 +514,10 @@ class _CarsPageState extends State<CarsPage> {
         ),
       );
     }
+
+    // Not-Mobile.
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Row(
-          spacing: 5,
-          children: [
-            SvgPicture.asset(
-              "assets/logo/new_logo.svg",
-              width: 40,
-              height: 40,
-              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
-            ),
-            Text(widget.title)
-          ]
-        ),
-        actions: [
-          IconButton(
-            onPressed: (){ launchUrl(Uri.parse("https://github.com/roddyrap/car-parking"), mode: LaunchMode.externalApplication); },
-            icon: SvgPicture.asset(
-              'assets/GitHub_Invertocat_White.svg',
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
-            ),
-          ),
-          IconButton(
-            onPressed: (){ FirebaseAuth.instance.signOut(); },
-            icon: Icon(Icons.logout),
-            color: Theme.of(context).colorScheme.onSurface,
-          )
-        ],
-      ),
+      appBar: pageAppBar,
       body: Row(
         spacing: 2,
 

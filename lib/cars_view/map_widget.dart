@@ -165,38 +165,20 @@ class MapWidgetState extends State<MapWidget> {
     // at the top we want more padding so the button won't overlap with it.
     final focusButtonTopPadding = 10.0 + (widget.attributionsAlignment.y == -1 ? 20.0 : 0.0);
 
+    TileLayer tileLayer = TileLayer(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'dev.roddyra.carpark'
+    );
+  
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
-        initialCenter: LatLng(32.0853, 34.7818), // Center the map over Tel Aviv, Israel.
+        initialCenter: const LatLng(32.0853, 34.7818), // Center the map over Tel Aviv, Israel.
         initialZoom: 18.0,
         onTap: widget.clickMarker ? _handleTap : null,
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'dev.roddyra.carpark',
-        ),
-        Padding(
-          padding: EdgeInsetsGeometry.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
-          child: FloatingActionButton(
-            onPressed: () => _updateClientPositionMaker(focusMap: true),
-            child: const Icon(Icons.my_location),
-          )
-        ),
-        Align(
-          alignment: widget.attributionsAlignment,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Container(
-              padding: EdgeInsetsGeometry.only(left: 5, right: 5),
-              color: Theme.of(context).colorScheme.surface,
-              child: const Text(
-                "flutter_map | © OpenStreetMap under the 'Open Database Licese' (ODbL)",
-              )
-            )
-          )
-        ),
+        Theme.of(context).brightness == Brightness.dark ? darkModeTilesContainerBuilder(context, tileLayer) : tileLayer,
         ListenableBuilder(
           listenable: _markers,
           builder: (context, _) {
@@ -204,6 +186,28 @@ class MapWidgetState extends State<MapWidget> {
               markers: _markers.getMarkers(),
             );
           }
+        ),
+        Align(
+          alignment: widget.attributionsAlignment,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding: const EdgeInsets.only(left: 5, right: 5),
+              color: Theme.of(context).colorScheme.surface.withAlpha(200),
+              child: const Text(
+                "flutter_map | © OpenStreetMap under the 'Open Database License' (ODbL)",
+              )
+            )
+          )
+        ),
+        Padding(
+          padding: EdgeInsets.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
+          child: FloatingActionButton(
+            onPressed: () => _updateClientPositionMaker(focusMap: true),
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+            child: const Icon(Icons.my_location),
+          )
         ),
       ],
     );

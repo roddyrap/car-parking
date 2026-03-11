@@ -5,6 +5,7 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'firebase_options.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:car_parking/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,8 @@ void main() async {
     EmailAuthProvider(),
   ]);
 
+  await initSavedTheme();
+
   runApp(const CarParkingApp());
 }
 
@@ -30,12 +33,33 @@ class CarParkingApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Car Parking Assistant',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.white),
-      ),
-      home: const AuthGate(),
+    return ValueListenableBuilder(
+      valueListenable: themeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'Car Parking Assistant',
+          theme: ThemeData(
+            colorScheme: .fromSeed(seedColor: Color(0xff0083ff), brightness: Brightness.light),
+            extensions: [
+              CarStatusColors(
+                occupiedByMeColor: Colors.blue.shade100,
+                occupiedByOtherColor: Colors.red.shade100,
+              )
+            ]
+          ),
+          darkTheme: ThemeData(
+            colorScheme: .fromSeed(seedColor: Color(0xff0083ff), brightness: Brightness.dark),
+            extensions: [
+              CarStatusColors(
+                occupiedByMeColor: Colors.blue.shade900,
+                occupiedByOtherColor: Colors.pink.shade900,
+              )
+            ]
+          ),
+          themeMode: themeMode,
+          home: const AuthGate(),
+        );
+      }
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:car_parking/theme.dart';
 
 import 'cars_data.dart';
 import 'map_widget.dart';
@@ -46,7 +47,7 @@ Future<void> fallbackUrlLaunch(Uri uri, Uri fallbackUri, {LaunchMode uriMode = L
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
 
-  final String title = "Car Parking Coordinator";
+  final String title = "Parking Coordinator";
 
   @override
   State<CarsPage> createState() => _CarsPageState();
@@ -293,8 +294,22 @@ class _CarsPageState extends State<CarsPage> {
 
   Widget _buildCarCard(CarData currentCar) {
     bool isLocationPresent = !currentCar.isOccupied() && currentCar.geoLocation != null;
+
+    Color? cardColor;
+    if (currentCar.isOccupied()) {
+      if (currentCar.isOccupiedByMe()) {
+        cardColor = Theme.of(context).extension<CarStatusColors>()!.occupiedByMeColor;
+      }
+      else {
+        cardColor = Theme.of(context).extension<CarStatusColors>()!.occupiedByOtherColor;
+      }
+    }
+    else {
+      cardColor = Theme.of(context).colorScheme.secondaryContainer;
+    }
+
     return Card(
-      color: currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? Colors.blue.shade100 : Colors.red.shade100) : Colors.white,
+      color: cardColor,
       child: ListTile(
         leading: currentCar.buildCarIcon(),
         title: Text(currentCar.name),
@@ -458,11 +473,12 @@ class _CarsPageState extends State<CarsPage> {
           height: 40,
           colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn)
         ),
-        Text(widget.title)
+        Text(widget.title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface),)
       ]
     );
 
     final pageActions = [
+      createThemeButton(context),
       IconButton(
         onPressed: (){ launchUrl(Uri.parse("https://github.com/roddyrap/car-parking"), mode: LaunchMode.externalApplication); },
         icon: SvgPicture.asset(

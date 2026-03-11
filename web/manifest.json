@@ -19,10 +19,52 @@
         },
         {
             "src": "screenshots/car_swimming_desktop.webp",
-            "sizes": "1280x950",
+            "sizes": "1920x1080",
             "type": "image/webp",
             "form_factor": "wide",
             "label": "An example of a parked car (In the sea)"
+        },
+        {
+            "src": "screenshots/car_swimming_dark.webp",
+            "sizes": "1081x2401",
+            "type": "image/webp",
+            "form_factor": "narrow",
+            "label": "An example of a parked car (In the sea)"
+        },
+        {
+            "src": "screenshots/car_swimming_dark_desktop.webp",
+            "sizes": "1920x1080",
+            "type": "image/webp",
+            "form_factor": "wide",
+            "label": "An example of a parked car (In the sea)"
+        },
+        {
+            "src": "screenshots/add_car_dark.webp",
+            "sizes": "1081x2401",
+            "type": "image/webp",
+            "form_factor": "narrow",
+            "label": "The add new car dialog"
+        },
+        {
+            "src": "screenshots/car_occupied_desktop.webp",
+            "sizes": "1920x1080",
+            "type": "image/webp",
+            "form_factor": "wide",
+            "label": "Showing that a car can be marked as used by you or someone else"
+        },
+        {
+            "src": "screenshots/car_occupied.webp",
+            "sizes": "1081x2401",
+            "type": "image/webp",
+            "form_factor": "narrow",
+            "label": "Showing that a car can be marked as used by you or someone else"
+        },
+        {
+            "src": "screenshots/car_parking_dark_desktop.webp",
+            "sizes": "1920x1080",
+            "type": "image/webp",
+            "form_factor": "wide",
+            "label": "Showing the park new car dialog, with optional geolocation & text"
         }
     ],
     "icons": [

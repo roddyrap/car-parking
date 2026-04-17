@@ -55,6 +55,10 @@ class MarkersList extends ChangeNotifier {
     notifyListeners();
   }
 
+  LatLng? getCurrentPositionMarkerPosition() {
+    return _clientPositionMarker?.point;
+  }
+
   LatLng? getTouchMarkerPosition() {
     return _touchMarker?.point;
   }
@@ -95,11 +99,9 @@ class MapWidgetState extends State<MapWidget> {
 
     _initialMapStateFuture = _loadMapState();
 
-    // Only focus the map on the first time. I want to allow users to move the map freely.
-    _updateClientPositionMaker(focusMap: true);
-
+    _updateClientPositionMarker();
     _clientPositionTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      _updateClientPositionMaker();
+      _updateClientPositionMarker();
     });
   }
 
@@ -181,7 +183,7 @@ class MapWidgetState extends State<MapWidget> {
     _markers.updateTouchMarker(latlng);
   }
 
-  Future<void> _updateClientPositionMaker({bool focusMap = false}) async {
+  Future<void> _updateClientPositionMarker() async {
     var currentPosition = await _getClientPosition();
 
     // We check if the widget is mounted because it might be closed by the time the position is found.
@@ -189,11 +191,6 @@ class MapWidgetState extends State<MapWidget> {
 
     var currentLatLng = LatLng(currentPosition.latitude, currentPosition.longitude);
     _markers.updateCurrentPositionMarker(currentLatLng);
-
-    // Update the current map position.
-    if (focusMap) {
-      _mapController.move(currentLatLng, _mapController.camera.zoom);
-    }
   }
 
   @override
@@ -257,11 +254,24 @@ class MapWidgetState extends State<MapWidget> {
             ),
             Padding(
               padding: EdgeInsets.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
-              child: FloatingActionButton(
-                onPressed: () => _updateClientPositionMaker(focusMap: true),
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-                child: const Icon(Icons.my_location),
+              child: ListenableBuilder(
+                listenable: _markers,
+                builder: (context, _) {
+                  LatLng? currentLocation = _markers.getCurrentPositionMarkerPosition();
+
+                  if (currentLocation == null) {
+                    return SizedBox.shrink();
+                  }
+
+                  return FloatingActionButton(
+                    onPressed: (){
+                      focusOnLatLng(currentLocation);
+                    },
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                    child: const Icon(Icons.my_location),
+                  );
+                }
               )
             ),
           ],

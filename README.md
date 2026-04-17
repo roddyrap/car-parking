@@ -1,3 +1,3 @@
-# car_parking
+# Car Parking Tracker
 
 A website for coordinating car locations.

@@ -1,11 +1,11 @@
-import 'package:car_parking/auth_gate.dart';
+import 'package:car_parking_tracker/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'firebase_options.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:car_parking/theme.dart';
+import 'package:car_parking_tracker/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,11 +24,11 @@ void main() async {
 
   await initSavedTheme();
 
-  runApp(const CarParkingApp());
+  runApp(const CarParkingTrackerApp());
 }
 
-class CarParkingApp extends StatelessWidget {
-  const CarParkingApp({super.key});
+class CarParkingTrackerApp extends StatelessWidget {
+  const CarParkingTrackerApp({super.key});
 
   // This widget is the root of your application.
   @override
@@ -37,7 +37,7 @@ class CarParkingApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, themeMode, _) {
         return MaterialApp(
-          title: 'Car Parking Assistant',
+          title: 'Car Parking Tracker',
           theme: ThemeData(
             colorScheme: .fromSeed(seedColor: Color(0xff0083ff), brightness: Brightness.light),
             extensions: [

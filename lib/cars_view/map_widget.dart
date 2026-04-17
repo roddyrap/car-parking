@@ -167,7 +167,7 @@ class MapWidgetState extends State<MapWidget> {
 
     TileLayer tileLayer = TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'dev.roddyra.carpark'
+      userAgentPackageName: 'dev.roddyra.carpark (contact: roddy.rappaport@gmail.com)'
     );
   
     return FlutterMap(

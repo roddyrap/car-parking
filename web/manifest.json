@@ -1,12 +1,12 @@
 {
-    "name": "Car Parking",
-    "short_name": "Car Parking",
+    "name": "Car Parking Tracker",
+    "short_name": "Car Parking Tracker",
     "id": "/",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "An app to coordinate car parking locations.",
+    "description": "An app to track car locations.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "screenshots": [

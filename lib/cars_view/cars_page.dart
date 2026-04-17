@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:car_parking/theme.dart';
+import 'package:car_parking_tracker/theme.dart';
 
 import 'cars_data.dart';
 import 'map_widget.dart';
@@ -47,7 +47,7 @@ Future<void> fallbackUrlLaunch(Uri uri, Uri fallbackUri, {LaunchMode uriMode = L
 class CarsPage extends StatefulWidget {
   const CarsPage({super.key});
 
-  final String title = "Parking Coordinator";
+  final String title = "Car Parking Tracker";
 
   @override
   State<CarsPage> createState() => _CarsPageState();

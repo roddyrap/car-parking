@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'cars_data.dart';
 
 class MarkersList extends ChangeNotifier {
@@ -84,13 +85,19 @@ class MapWidgetState extends State<MapWidget> {
 
   final MarkersList _markers = MarkersList();
   Timer? _clientPositionTimer;
+  Timer? _mapPositionSaveTimer;
+
+  late Future<(LatLng, double)?> _initialMapStateFuture;
 
   @override
   void initState() {
     super.initState();
 
+    _initialMapStateFuture = _loadMapState();
+
     // Only focus the map on the first time. I want to allow users to move the map freely.
     _updateClientPositionMaker(focusMap: true);
+
     _clientPositionTimer = Timer.periodic(Duration(seconds: 5), (timer) {
       _updateClientPositionMaker();
     });
@@ -99,7 +106,9 @@ class MapWidgetState extends State<MapWidget> {
   @override
   void dispose() {
     super.dispose();
+
     _clientPositionTimer?.cancel();
+    _mapPositionSaveTimer?.cancel();
   }
 
   LatLng? getTouchMarkerPosition() {
@@ -138,6 +147,34 @@ class MapWidgetState extends State<MapWidget> {
     }
   }
 
+  Future<(LatLng, double)?> _loadMapState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final lat = prefs.getDouble('map_lat');
+    final lng = prefs.getDouble('map_lng');
+    final zoom = prefs.getDouble('map_zoom');
+
+    if (lat != null && lng != null && zoom != null) {
+      return (LatLng(lat, lng), zoom);
+    }
+
+    // Fallback to center the map over Tel Aviv, Israel if nothing is found.
+    return null;
+  }
+
+  void _saveMapState(LatLng center, double zoom) {
+    // Cancel the previous timer if the user is still moving the map
+    if (_mapPositionSaveTimer?.isActive ?? false) _mapPositionSaveTimer!.cancel();
+
+    // Only actually save to memory after the map has been still for 500ms
+    _mapPositionSaveTimer = Timer(const Duration(milliseconds: 500), () async {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setDouble('map_lat', center.latitude);
+      prefs.setDouble('map_lng', center.longitude);
+      prefs.setDouble('map_zoom', zoom);
+    });
+  }
+
   void _handleTap(TapPosition tapPosition, LatLng latlng) {
     // This function shouldn't be wired to respond to clicks if that's the case, but I want to be safe.
     if (!widget.clickMarker) return;
@@ -169,47 +206,67 @@ class MapWidgetState extends State<MapWidget> {
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: 'dev.roddyra.carpark (contact: roddy.rappaport@gmail.com)'
     );
-  
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: const LatLng(32.0853, 34.7818), // Center the map over Tel Aviv, Israel.
-        initialZoom: 18.0,
-        onTap: widget.clickMarker ? _handleTap : null,
-      ),
-      children: [
-        Theme.of(context).brightness == Brightness.dark ? darkModeTilesContainerBuilder(context, tileLayer) : tileLayer,
-        ListenableBuilder(
-          listenable: _markers,
-          builder: (context, _) {
-            return MarkerLayer(
-              markers: _markers.getMarkers(),
-            );
-          }
-        ),
-        Align(
-          alignment: widget.attributionsAlignment,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Container(
-              padding: const EdgeInsets.only(left: 5, right: 5),
-              color: Theme.of(context).colorScheme.surface.withAlpha(200),
-              child: const Text(
-                "flutter_map | © OpenStreetMap under the 'Open Database License' (ODbL)",
+
+    return FutureBuilder(
+      future: _initialMapStateFuture,
+      builder: (context, snapshot) {
+        // Show a simple loader while fetching the map position.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        // If no prior position is found (Due to first time or failure) center over Tel Aviv, Israel
+        // as the default.
+        final initialCenter = snapshot.data?.$1 ?? const LatLng(32.0853, 34.7818);
+        final initialZoom = snapshot.data?.$2 ?? 18.0;
+
+        return FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: initialCenter,
+            initialZoom: initialZoom,
+            onTap: widget.clickMarker ? _handleTap : null,
+            onPositionChanged: (MapCamera camera, bool hasGesture) {
+              if (hasGesture) {
+                _saveMapState(camera.center, camera.zoom);
+              }
+            },
+          ),
+          children: [
+            Theme.of(context).brightness == Brightness.dark ? darkModeTilesContainerBuilder(context, tileLayer) : tileLayer,
+            ListenableBuilder(
+              listenable: _markers,
+              builder: (context, _) {
+                return MarkerLayer(
+                  markers: _markers.getMarkers(),
+                );
+              }
+            ),
+            Align(
+              alignment: widget.attributionsAlignment,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  padding: const EdgeInsets.only(left: 5, right: 5),
+                  color: Theme.of(context).colorScheme.surface.withAlpha(200),
+                  child: const Text(
+                    "flutter_map | © OpenStreetMap under the 'Open Database License' (ODbL)",
+                  )
+                )
               )
-            )
-          )
-        ),
-        Padding(
-          padding: EdgeInsets.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
-          child: FloatingActionButton(
-            onPressed: () => _updateClientPositionMaker(focusMap: true),
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-            child: const Icon(Icons.my_location),
-          )
-        ),
-      ],
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: 10, right: 0, top: focusButtonTopPadding, bottom: 0),
+              child: FloatingActionButton(
+                onPressed: () => _updateClientPositionMaker(focusMap: true),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                child: const Icon(Icons.my_location),
+              )
+            ),
+          ],
+        );
+      }
     );
   }
 }

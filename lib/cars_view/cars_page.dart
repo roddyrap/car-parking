@@ -292,6 +292,29 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
+  Text _buildCarTextlocation(CarData currentCar) {
+    if (currentCar.isOccupied()) {
+      final String occupierText = currentCar.isOccupiedByMe() 
+          ? "Occupied by me"
+          : "Occupied by ${currentCar.occuppierEmail!}";
+          
+      return Text(occupierText);
+    }
+
+    if (currentCar.textLocation?.isNotEmpty ?? false) {
+      return Text(currentCar.textLocation!);
+    }
+
+    return const Text(
+      "No text location provided",
+      style: TextStyle(
+        fontStyle: FontStyle.italic,
+        color: Colors.grey,
+        fontSize: 10.0,
+      ),
+    );
+  }
+
   Widget _buildCarCard(CarData currentCar) {
     bool isLocationPresent = !currentCar.isOccupied() && currentCar.geoLocation != null;
 
@@ -313,7 +336,7 @@ class _CarsPageState extends State<CarsPage> {
       child: ListTile(
         leading: currentCar.buildCarIcon(),
         title: Text(currentCar.name),
-        subtitle: Text(currentCar.isOccupied() ? (currentCar.isOccupiedByMe() ? "Occupied by me" : "Occupied by ${currentCar.occuppierEmail!}") : (currentCar.textLocation ?? "")),
+        subtitle: _buildCarTextlocation(currentCar),
         trailing: Row(
           mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
           children: [

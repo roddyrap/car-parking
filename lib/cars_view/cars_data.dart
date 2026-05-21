@@ -31,8 +31,6 @@ class CarData {
     return owner == FirebaseAuth.instance.currentUser?.uid;
   }
 
-
-
   Widget buildCarIcon() {
     return CircleAvatar(
       backgroundColor: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,

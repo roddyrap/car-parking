@@ -7,31 +7,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:car_parking_tracker/theme.dart';
 
+import 'car_operations.dart';
+import 'car_dialogs.dart';
 import 'cars_data.dart';
 import 'map_widget.dart';
-import 'shared_email_list.dart';
-
-const Map<String, Color> carColors = {
-  "white": Colors.white,
-  "black": Colors.black,
-  "gray": Colors.grey,
-  "blue": Colors.blue,
-  "orange": Colors.orange,
-  "purple": Colors.purple,
-  "green": Colors.green,
-  "yellow": Colors.yellow,
-  "pink": Colors.pink,
-  "red": Colors.red
-};
-
-String? getColorName(Color color) {
-  for (var colorName in carColors.keys) {
-    // Convert to ARGB32 in order to avoid floating-point imprecision.
-    if (color.toARGB32() == carColors[colorName]?.toARGB32()) return colorName;
-  }
-
-  return null;
-}
 
 Future<void> fallbackUrlLaunch(Uri uri, Uri fallbackUri, {LaunchMode uriMode = LaunchMode.platformDefault, LaunchMode fallbackUriMode = LaunchMode.platformDefault }) async {
   try {
@@ -93,205 +72,6 @@ class _CarsPageState extends State<CarsPage> {
     );
   }
 
-  void _tryPark(String carID, String textLocation, LatLng? position) {
-    var db = FirebaseFirestore.instance;
-    var modifiedCar = db.collection("cars").doc(carID);
-
-    modifiedCar.update({
-      "geo_location": position != null ? GeoPoint(position.latitude, position.longitude) : null,
-      "text_location": textLocation,
-      "occupier_email": null,
-    }).then((a) {
-      // Update the map markers.
-      _refreshCars();
-    });
-  }
-
-  // If we called with no `currentCarData` then adds a new car.
-  void _openUpdateCarDialog({CarData? currentCarData}) {
-    GlobalKey<SharedEmailsListState> sharedEmailsKey = GlobalKey();
-
-    var carNameTextController = TextEditingController();
-    carNameTextController.text = currentCarData != null ? currentCarData.name : "";
-    ValueNotifier<String> carColorName = ValueNotifier(
-      (currentCarData != null ? getColorName(currentCarData.color) : null) ?? carColors.keys.first
-    );
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => Dialog(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsetsGeometry.all(10),
-            child: Column(
-              spacing: 10,
-              children: [
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(currentCarData != null ? Icons.edit : Icons.add),
-                      Text(
-                        currentCarData != null ? "Edit a Car" : "Add a New Car",
-                        style: Theme.of(context).textTheme.titleLarge
-                      )
-                    ]
-                  )
-                ),
-                Row(
-                  children: [
-                    DropdownMenu<String>(
-                      width: 160,
-                      leadingIcon: ValueListenableBuilder(
-                        valueListenable: carColorName,
-                        builder: (context, colorName, _) {
-                          return Icon(
-                            Icons.square_rounded,
-                            color: carColors[colorName] ?? carColors.values.first
-                          );
-                        },
-                      ),
-                      label: const Text("Color"),
-                      requestFocusOnTap: false,
-                      onSelected: (value){ carColorName.value = value!; },
-                      initialSelection: carColorName.value,
-                      dropdownMenuEntries: carColors.keys.map((colorName) => DropdownMenuEntry<String>(value: colorName, label: colorName)).toList(),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: carNameTextController,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.directions_car),
-                          label: Text("Car Name")
-                        )
-                      ),
-                    )
-                  ]
-                ),
-                SharedEmailsList(key: sharedEmailsKey, initialItems: currentCarData?.sharedEmails ?? []),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(onPressed: () { Navigator.pop(context); }, child: Text("Cancel")),
-                    TextButton(onPressed: () {
-                      Color carColor = carColors[carColorName.value] ?? carColors["white"]!;
-                      var db = FirebaseFirestore.instance;
-                      var dbCarData = {
-                        "owner": FirebaseAuth.instance.currentUser!.uid,
-                        "name": carNameTextController.text,
-                        "color": carColor.toARGB32(),
-                        "shared_emails": sharedEmailsKey.currentState?.getItems() ?? [],
-                        "occupier_email": null
-                      };
-
-                      Future<void> dbUpdateFuture;
-                      if (currentCarData != null) {
-                        dbUpdateFuture = db.collection("cars").doc(currentCarData.carID).update(dbCarData);
-                      }
-                      else {
-                        final dbBatchOperation = db.batch();
-
-                        final userRef = db.collection('users').doc(FirebaseAuth.instance.currentUser!.uid);
-                        final carRef = db.collection("cars").doc();
-                        dbBatchOperation.set(userRef, {'car_count': FieldValue.increment(1)}, SetOptions(merge: true));
-                        dbBatchOperation.set(carRef, dbCarData);
-
-                        dbUpdateFuture = dbBatchOperation.commit();
-                      }
-
-                      dbUpdateFuture.then((docReference){ _refreshCars(); });
-                      Navigator.pop(context);
-                    }, child: Text(currentCarData != null ? "Edit Car" : "Add Car")),
-                  ],
-                )
-              ],
-            )
-          ),
-        )
-      )
-    );
-  }
-
-  void _openCarParkDialog(String carID) {
-    GlobalKey<MapWidgetState> parkMapKey  = GlobalKey();
-    TextEditingController     parkTextController = TextEditingController();
-
-    showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => Dialog(
-        child: Padding(
-          padding: const EdgeInsetsGeometry.all(10),
-          child: Column(
-            spacing: 5,
-            children: [
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.local_parking),
-                    Text("Park Your Car", style: Theme.of(context).textTheme.titleLarge)
-                  ]
-                )
-              ),
-              TextField(
-                controller: parkTextController,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(),
-                  labelText: "Text Position",
-                ),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: MapWidget(key: parkMapKey, clickMarker: true)
-                )
-              ),
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(onPressed: (){ Navigator.pop(context); }, child: const Text("Cancel")),
-                    TextButton(onPressed: () {
-                      LatLng? mapPosition = parkMapKey.currentState?.getTouchMarkerPosition();
-                      _tryPark(carID, parkTextController.text, mapPosition);
-
-                      Navigator.pop(context);
-                    }, child: const Text("Park"))
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      )
-    );
-  }
-
-  void _tryDeleteCar(String carID) {
-    final db = FirebaseFirestore.instance;
-
-    final dbBatchOperation = db.batch();
-
-    final userRef = db.collection('users').doc(FirebaseAuth.instance.currentUser!.uid);
-    final carRef = db.collection("cars").doc(carID);
-
-    dbBatchOperation.set(userRef, {'car_count': FieldValue.increment(-1)}, SetOptions(merge: true));
-    dbBatchOperation.delete(carRef);
-
-    dbBatchOperation.commit().then((_){ _refreshCars(); });
-  }
-
-  void _tryTakeCar(CarData car) {
-    String? newOccupier = FirebaseAuth.instance.currentUser?.email;
-    if (car.isOccupiedByMe()) newOccupier = null;
-
-    FirebaseFirestore.instance.collection("cars").doc(car.carID).update({"occupier_email": newOccupier}).then(
-      (_){
-        _refreshCars();
-      }
-    );
-  }
-
   Text _buildCarTextlocation(CarData currentCar) {
     if (currentCar.isOccupied()) {
       final String occupierText = currentCar.isOccupiedByMe() 
@@ -341,22 +121,22 @@ class _CarsPageState extends State<CarsPage> {
           mainAxisSize: MainAxisSize.min, // Essential to prevent layout crashes
           children: [
             IconButton(
-              onPressed: (){ _openCarParkDialog(currentCar.carID); },
+              onPressed: (){ openCarParkDialog(context, currentCar.carID); },
               icon: Icon(Icons.local_parking),
               color: Colors.blue
             ),
             IconButton(
-              onPressed: () { _tryTakeCar(currentCar); },
+              onPressed: () { tryTakeCar(currentCar); },
               icon: currentCar.isOccupiedByMe() ? Icon(Icons.lock_open) : Icon(Icons.lock),
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),// 2. What happens when a user picks an option
               onSelected: (String result) {
                 if (result == "delete") {
-                  _tryDeleteCar(currentCar.carID);
+                  tryDeleteCar(currentCar.carID);
                 }
                 if (result == "edit") {
-                  _openUpdateCarDialog(currentCarData: currentCar);
+                  openModifyCarDialog(context: context, currentCarData: currentCar);
                 }
                 else if (result == "focus" && isLocationPresent) {
                   _mapKey.currentState?.focusOnLatLng(
@@ -453,7 +233,7 @@ class _CarsPageState extends State<CarsPage> {
                   icon: const Icon(Icons.refresh),
                 ),
                 TextButton.icon(
-                  onPressed: _openUpdateCarDialog,
+                  onPressed: () => openModifyCarDialog(context: context, currentCarData: null),
                   label: const Text("Add Car"),
                   icon: const Icon(Icons.add),
                 ),

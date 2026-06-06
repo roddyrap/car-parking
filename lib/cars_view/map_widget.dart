@@ -119,7 +119,15 @@ class MapWidgetState extends State<MapWidget> {
 
   void focusOnLatLng(LatLng position) {
     _mapController.move(position, _mapController.camera.zoom);
-  } 
+  }
+
+  void focusOnCar(CarData carData) {
+    final double? latitude = carData.geoLocation?.latitude;
+    final double? longitude = carData.geoLocation?.longitude;
+
+    if (latitude == null || longitude == null) return;
+    focusOnLatLng(LatLng(latitude, longitude));
+  }
 
   void setCarMarkers(List<CarData> carData) {
     _markers.updateCarMarkers(carData);

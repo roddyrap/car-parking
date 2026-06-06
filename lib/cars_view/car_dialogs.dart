@@ -12,7 +12,7 @@ import 'package:car_parking_tracker/cars_view/map_widget.dart';
 import 'package:latlong2/latlong.dart';
 
 // If we called with no `currentCarData` then adds a new car.
-Future<void>? openModifyCarDialog({required BuildContext context, CarData? currentCarData}) async {
+Future<void> openModifyCarDialog({required BuildContext context, CarData? currentCarData}) async {
   GlobalKey<SharedEmailsListState> sharedEmailsKey = GlobalKey();
 
   var carNameTextController = TextEditingController();
@@ -116,11 +116,11 @@ Future<void>? openModifyCarDialog({required BuildContext context, CarData? curre
   );
 }
 
-void openCarParkDialog(BuildContext context, String carID) {
+Future<String?> openCarParkDialog(BuildContext context, String carID) {
   GlobalKey<MapWidgetState> parkMapKey  = GlobalKey();
   TextEditingController     parkTextController = TextEditingController();
 
-  showDialog<String>(
+  return showDialog<String>(
     context: context,
     builder: (BuildContext context) => Dialog(
       child: Padding(

@@ -1,11 +1,19 @@
+import 'package:car_parking_tracker/cars_view/car_dialogs.dart';
+import 'package:car_parking_tracker/cars_view/car_operations.dart';
 import 'package:flutter/material.dart';
+
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../cars_data.dart';
 
 class CarCard extends StatefulWidget {
   final CarData car;
+  final VoidCallback? focusAction;
+  final VoidCallback refreshAction;
 
-  const CarCard({super.key, required this.car});
+  const CarCard({super.key, required this.car, required this.refreshAction, required this.focusAction});
 
   @override
   State<CarCard> createState() => _CarCardState();
@@ -62,8 +70,6 @@ class _CarCardState extends State<CarCard> {
     );
   }
 
-  // --- 3. UI COMPONENTS ---
-
   Widget _buildCompactHeader() {
     return ListTile(
       leading: widget.car.buildCarIcon(),
@@ -86,18 +92,25 @@ class _CarCardState extends State<CarCard> {
       mainAxisSize: MainAxisSize.min, 
       children: [
         IconButton(
-          onPressed: () { /* Park Logic */ },
+          onPressed: () => 
+            openCarParkDialog(context, widget.car.carID).then((_) => widget.refreshAction()),
           icon: const Icon(Icons.local_parking, color: Colors.blue),
         ),
         IconButton(
-          onPressed: () { /* Occupy Logic */ },
+          onPressed: () =>
+            tryTakeCar(widget.car).then((_) => widget.refreshAction()),
           icon: widget.car.isOccupiedByMe() ? const Icon(Icons.lock_open) : const Icon(Icons.lock),
         ),
-        if (_hasGeoLocation) 
-          IconButton(
-            onPressed: () { /* Focus Logic */ },
-            icon: const Icon(Icons.my_location),
+        // The arrow on the side that symbolizes the current expansion state.
+        AnimatedRotation(
+          turns: _isExpanded ? 0.0 : 0.25,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: const Icon(
+            Icons.expand_more,
+            color: Colors.grey,
           ),
+        ),
       ],
     );
   }
@@ -114,7 +127,10 @@ class _CarCardState extends State<CarCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(),
-                if (!_isMissingTextLocation) _buildFullLocationText(),
+                if (!_isMissingTextLocation) ... [
+                  _buildFullLocationText(),
+                  const Divider(),
+                ],
                 _buildSecondaryActions(),
               ],
             ),
@@ -138,28 +154,101 @@ class _CarCardState extends State<CarCard> {
   }
 
   Widget _buildSecondaryActions() {
+    final bool isOwned = widget.car.isOwnedByMe();
     return OverflowBar(
-      alignment: MainAxisAlignment.end,
+      alignment: MainAxisAlignment.center,
       children: [
-        if (_hasGeoLocation)
-          TextButton.icon(
-            onPressed: () { /* Navigate Logic */ },
-            icon: const Icon(Icons.navigation),
-            label: const Text("Navigate"),
-          ),
-        if (widget.car.isOwnedByMe()) ...[
-          TextButton.icon(
-            onPressed: () { /* Edit Logic */ },
-            icon: const Icon(Icons.edit),
-            label: const Text("Edit"),
-          ),
-          TextButton.icon(
-            onPressed: () { /* Delete Logic */ },
-            icon: const Icon(Icons.delete, color: Colors.red),
-            label: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ]
+        _buildActionColumn(
+          icon: Icons.my_location,
+          label: "Focus",
+          onTap: _hasGeoLocation ? widget.focusAction : null
+        ),
+        _buildActionColumn(
+          icon: Icons.navigation,
+          label: "Navigate",
+          onTap: _hasGeoLocation ? () => _navigateToCar(widget.car) : null
+        ),
+        _buildActionColumn(
+          icon: Icons.edit,
+          label: "Edit",
+          onTap: isOwned ? () => 
+            openModifyCarDialog(context: context, currentCarData: widget.car).then((_) => widget.refreshAction()) : null
+        ),
+        _buildActionColumn(
+          isDestructive: true,
+          icon: Icons.delete,
+          label: "Delete",
+          onTap: isOwned ? () => tryDeleteCar(widget.car.carID).then((_) => widget.refreshAction()) : null
+        )
       ],
     );
+  }
+
+  Widget _buildActionColumn({
+    required IconData icon,
+    required String label,
+    VoidCallback? onTap,
+    bool isDestructive = false,
+  }) {
+    final bool isDisabled = onTap == null;
+
+    // Determine colors based on state
+    final Color activeColor  = isDestructive ? Colors.red : Theme.of(context).colorScheme.primary;
+    final Color displayColor = isDisabled ? Colors.grey.shade400 : activeColor;
+
+    return InkWell(
+      // Even if the button is disabled I still want to be clickable, just do nothing.
+      onTap: onTap ?? (){},
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: displayColor),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: displayColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fallbackUrlLaunch(Uri uri, Uri fallbackUri, {LaunchMode uriMode = LaunchMode.platformDefault, LaunchMode fallbackUriMode = LaunchMode.platformDefault }) async {
+    try {
+      bool urlLaunched = await launchUrl(uri, mode: uriMode);
+        if (!urlLaunched) {
+          throw Exception();
+        }
+    } catch (e) {
+      launchUrl(fallbackUri, mode: fallbackUriMode);
+    }
+  }
+
+  void _navigateToCar(CarData carData) {
+    final lat = carData.geoLocation!.latitude;
+    final lng = carData.geoLocation!.longitude;
+
+    // Use the universal 'geo' URI for Android/IOS default app support, and open
+    // google maps on non-mobile web platforms.
+    final Uri geoUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng");
+    final Uri gmapsUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
+    if (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) {
+      _fallbackUrlLaunch(
+        geoUri,
+        gmapsUri,
+        fallbackUriMode: LaunchMode.externalApplication
+      );
+    }
+    else {
+      launchUrl(gmapsUri, mode: LaunchMode.externalApplication);
+    }
   }
 }

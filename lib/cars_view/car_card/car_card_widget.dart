@@ -1,5 +1,7 @@
 import 'package:car_parking_tracker/cars_view/car_dialogs.dart';
 import 'package:car_parking_tracker/cars_view/car_operations.dart';
+import 'package:car_parking_tracker/theme.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/foundation.dart'
@@ -11,7 +13,7 @@ import '../cars_data.dart';
 
 class CarCard extends StatefulWidget {
   final CarData car;
-  final VoidCallback? focusAction;
+  final VoidCallback focusAction;
   final VoidCallback refreshAction;
   final LatLng? Function() getCurrentLocation;
 
@@ -37,8 +39,11 @@ class _CarCardState extends State<CarCard> {
 
   bool get _hasGeoLocation => widget.car.geoLocation != null;
   bool get _isMissingTextLocation =>
-      !widget.car.isOccupied() &&
+      !_isOccupied &&
       (widget.car.textLocation?.isEmpty ?? true);
+
+  bool get _isOccupied => widget.car.occuppierEmail != null;
+  bool get _isOccupiedByMe => widget.car.occuppierEmail == FirebaseAuth.instance.currentUser?.email;
 
   String get _subtitleText {
     if (widget.car.isOccupied()) {
@@ -54,10 +59,22 @@ class _CarCardState extends State<CarCard> {
     return "No text location provided";
   }
 
+  Color? getWidgetColor() {
+    if (_isOccupiedByMe) {
+      return Theme.of(context).extension<CarStatusColors>()!.occupiedByMeColor;
+    }
+    else if (_isOccupied) {
+      return Theme.of(context).extension<CarStatusColors>()!.occupiedByOtherColor;
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: getWidgetColor(),
       child: InkWell(
         onTap: _toggleExpand,
         child: Column(

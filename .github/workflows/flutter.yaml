@@ -29,7 +29,7 @@ jobs:
           channel: stable
           flutter-version: 3.41.7
       - name: Build Web-App
-        run: flutter build web --release --wasm -O4
+        run: flutter build web --release -O4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

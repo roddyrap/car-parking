@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform;
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cars_data.dart';
@@ -12,8 +13,9 @@ class CarCard extends StatefulWidget {
   final CarData car;
   final VoidCallback? focusAction;
   final VoidCallback refreshAction;
+  final LatLng? Function() getCurrentLocation;
 
-  const CarCard({super.key, required this.car, required this.refreshAction, required this.focusAction});
+  const CarCard({super.key, required this.car, required this.refreshAction, required this.focusAction, required this.getCurrentLocation});
 
   @override
   State<CarCard> createState() => _CarCardState();
@@ -92,8 +94,15 @@ class _CarCardState extends State<CarCard> {
       mainAxisSize: MainAxisSize.min, 
       children: [
         IconButton(
+          tooltip: 'Park the car (Long press for Quick Park)',
           onPressed: () => 
             openCarParkDialog(context, widget.car.carID).then((_) => widget.refreshAction()),
+          onLongPress: () {
+            LatLng? location = widget.getCurrentLocation();
+            if (location != null) {
+              tryPark(widget.car.carID, "", location).then((_) => widget.refreshAction());
+            }
+          },
           icon: const Icon(Icons.local_parking, color: Colors.blue),
         ),
         IconButton(

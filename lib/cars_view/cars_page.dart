@@ -113,6 +113,7 @@ class _CarsPageState extends State<CarsPage> {
           car: carData,
           refreshAction: _refreshCars,
           focusAction: () => _mapKey.currentState?.focusOnCar(carData),
+          getCurrentLocation: () => _mapKey.currentState?.getCurrentPositionMarkerPosition(),
         );
       }
     );

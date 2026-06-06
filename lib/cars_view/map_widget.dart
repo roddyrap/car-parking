@@ -117,6 +117,10 @@ class MapWidgetState extends State<MapWidget> {
     return _markers.getTouchMarkerPosition();
   }
 
+  LatLng? getCurrentPositionMarkerPosition() {
+    return _markers.getCurrentPositionMarkerPosition();
+  }
+
   void focusOnLatLng(LatLng position) {
     _mapController.move(position, _mapController.camera.zoom);
   }
